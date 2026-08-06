@@ -21,6 +21,19 @@
  * placement.js — AreCal 配置モード拡張 v0.9.35
  *
  * [最新の変更]
+ * v0.0056:
+ *   - テキスト入力ダイアログに「定型文スタンプ」機能を追加。入力欄の右に▼ボタンを新設し、押すと
+ *     五十音行ごとに整理された定型文ボタン一覧(現場で使う用語约90語)を展開。クリックで入力欄に
+ *     半角スペース区切りで追記(複数連続選択可、パネルは自動では閉じない)。パネルはmax-width/max-height
+ *     +overflow-y:autoで内部スクロールに留め、開いた際にダイアログ全体が画面端からはみ出す場合は
+ *     位置を自動補正(ページ全体のスクロールが発生しないようにする対応)。参考用に貰ったサンプルHTML
+ *     (色/サイズ項目なし・左詰め単純折返し)は元々の実装に既にある色/サイズUIとは別物のため、その2項目は
+ *     そのまま流用せず、五十音の行見出し付きレイアウトで独自に整理して実装。
+ * v0.0055:
+ *   - Arecalayの「線」「矢印」「円」に、テキストと同様の呼称「0」(現行の1より細い最小サイズ)を追加。
+ *     ARROW_LW/LINE_LWの先頭に0番目の値を追加し、参照方式を旧来の(sizeStep||1)-1(1始まりのindex変換)から
+ *     TEXT_FSと同じ sizeStep??1 の直接index方式に統一。デフォルトサイズ選択(defArrowStep/defLineStep)の
+ *     下限、および左UIの-ボタンの下限もtext限定(0)から全タイプ共通(0)に変更。
  * v0.0054:
  *   - 外部監査で指摘された「正規表現[\s\S]*によるバックトラック地獄でフリーズする」という懸念を実測で検証。
  *     結果: 9MB級・末尾に空白20万文字を追加した意地悪ケースでも約175msで完了し、指数関数的な遅延(ReDoS)は
@@ -217,8 +230,8 @@
   const COLORS      = ['#ff4081','#e8a020','#188C1C','#1B3EAB','#aaaaaa','#ff8c00','#111111'];
   const PM_UNDO_MAX = 30;
   
-  const ARROW_LW    = [14, 21, 33, 57, 90];  // 太さは元に戻す（矢じりだけ拡大方針に変更）
-  const LINE_LW     = [7, 10, 14, 21, 33, 57, 90];   // 線を7段階化(3~7は矢印の太さ1~5と同じ値)
+  const ARROW_LW    = [7, 14, 21, 33, 57, 90];  // v0.0055: 呼称0(index0)を新設。太さは元に戻す（矢じりだけ拡大方針に変更）
+  const LINE_LW     = [4, 7, 10, 14, 21, 33, 57, 90];   // v0.0055: 呼称0(index0)を新設。線を7段階化(3~7は矢印の太さ1~5と同じ値)
   const TEXT_FS     = [20, 40, 56, 80, 112, 160]; // v0.0048: 呼称0のサイズを20pxに変更(index0=呼称0)
 
   let placementMode = false;
@@ -647,7 +660,7 @@
     pmRightPanel.querySelector('#pm-copy-btn').onclick      = showCopyDialog;
 
     pmRightPanel.querySelector('#pm-arrow-step-dn').onclick = () => {
-      defArrowStep = Math.max(1,defArrowStep-1);
+      defArrowStep = Math.max(0,defArrowStep-1); // v0.0055: 呼称0を追加
       pmRightPanel.querySelector('#pm-arrow-step-lbl').textContent = defArrowStep;
     };
     pmRightPanel.querySelector('#pm-arrow-step-up').onclick = () => {
@@ -655,7 +668,7 @@
       pmRightPanel.querySelector('#pm-arrow-step-lbl').textContent = defArrowStep;
     };
     pmRightPanel.querySelector('#pm-line-step-dn').onclick = () => {
-      defLineStep = Math.max(1,defLineStep-1);
+      defLineStep = Math.max(0,defLineStep-1); // v0.0055: 呼称0を追加
       pmRightPanel.querySelector('#pm-line-step-lbl').textContent = defLineStep;
     };
     pmRightPanel.querySelector('#pm-line-step-up').onclick = () => {
@@ -1697,7 +1710,7 @@
       if (ann.type==='arrow' || ann.type==='line') {
         const pScale = getPaperScale();
         const lwArr = ann.type==='line' ? LINE_LW : ARROW_LW;
-        const lw    = lwArr[(ann.sizeStep||1)-1] * pScale;
+        const lw    = lwArr[ann.sizeStep??1] * pScale; // v0.0055: 呼称0対応でindex化方式変更(旧: sizeStep||1)-1)
         const lwSc  = lw * zoom;
         const grip  = Math.max(lwSc / 2 + 10, 14);
         const sx = ann.x1*zoom, sy = ann.y1*zoom;
@@ -1707,7 +1720,7 @@
         if (distToSeg(cssx,cssy,sx,sy,tx,ty) < lwSc / 2 + 6)  return {uuid:ann.uuid,part:'body'};
       }
       if (ann.type==='circle') {
-        const lw   = LINE_LW[(ann.sizeStep||1)-1] * getPaperScale();
+        const lw   = LINE_LW[ann.sizeStep??1] * getPaperScale(); // v0.0055: 呼称0対応でindex化方式変更
         const lwSc = lw * zoom;
         const grip = Math.max(lwSc / 2 + 10, 14);
         const cxs = ann.cx*zoom, cys = ann.cy*zoom, rS = (ann.r||0)*zoom;
@@ -1816,10 +1829,15 @@
         <input id="pm-text-val" type="text" placeholder="テキストを入力..."
           style="background:#2a2a3a;border:1px solid ${borderColor}55;color:#eee;border-radius:4px;
                  padding:5px 9px;font-size:.84em;width:190px;outline:none;box-sizing:border-box;">
+        <button id="pm-text-stamp-tgl" title="定型文"
+          style="padding:5px 8px;background:#2a2a3a;border:1px solid ${borderColor};color:${borderColor};
+                 border-radius:4px;cursor:pointer;font-size:.75em;">▼</button>
         <button id="pm-text-ok"
           style="padding:5px 12px;background:${borderColor};border:none;color:#000;
                  border-radius:4px;cursor:pointer;font-weight:700;font-size:.82em;">✓</button>
       </div>
+      <div id="pm-text-stamp-panel" style="display:none;max-width:420px;max-height:220px;overflow-y:auto;
+        background:rgba(0,0,0,.25);border:1px solid #333;border-radius:5px;padding:6px 7px;"></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div id="pm-text-colors" style="display:flex;gap:4px;">
           ${TEXT_COLORS.map(c => `<button class="pm-text-color-btn" data-color="${c}"
@@ -1838,6 +1856,72 @@
         </div>
       </div>`;
     document.body.appendChild(wrap);
+
+    // v0.0056: 定型文スタンプ機能。▼ボタンでテキスト候補を五十音行ごとに一覧表示し、クリックで入力欄に追記する
+    const STAMP_GROUPS = [
+      ['あ', ['アウトリガー張出','足場組立範囲','足元注意','安全設備','安全通路','親綱']],
+      ['か', ['開口部注意','概算数量','火気厳禁','火気使用','仮囲い','仮置き','仮設トイレ','感電注意',
+               '基準点','既存構造物','既存利用','休憩所','クレーン作業','ゲート','現場事務所',
+               '工事車両進入路','高所作業','コンクリート打設範囲']],
+      ['さ', ['作業エリア','作業時間','作業半径','参考図','残工事','残土置場','資機材置場','資材置場',
+               '車両ルート','重機作業中','消火器','消火設備','頭上注意','施工範囲','設置範囲','旋回範囲',
+               '先行工事','洗車場','測点']],
+      ['た', ['第三者立入禁止','待機場所','立入禁止','玉掛作業','丁張','墜落注意','吊荷下立入禁止',
+               '手摺','転落注意','土砂仮置場']],
+      ['な', ['法肩','法面']],
+      ['は', ['排水処理','搬出経路','搬入経路','飛来落下注意','分電盤','別途','別途工事','保安設備','歩行者通路']],
+      ['ま', ['埋設物','水替え','見積範囲','見積範囲外']],
+      ['や', ['誘導員配置','要確認','要協議']],
+      ['英数', ['BM']],
+    ];
+    const stampPanel = document.getElementById('pm-text-stamp-panel');
+    const stampTgl    = document.getElementById('pm-text-stamp-tgl');
+    let stampBuilt = false;
+    function buildStampPanel() {
+      if (stampBuilt) return;
+      stampBuilt = true;
+      stampPanel.innerHTML = STAMP_GROUPS.map(([label, words]) => `
+        <div style="display:flex;align-items:flex-start;gap:5px;margin-bottom:4px;">
+          <span style="flex-shrink:0;width:2.2em;padding-top:4px;font-size:.66em;color:#888;text-align:right;">${label}</span>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;">
+            ${words.map(w => `<button class="pm-stamp-btn" data-w="${w}"
+              style="padding:3px 8px;background:#2a2a3a;border:1px solid #444;color:#cacaca;
+                     border-radius:4px;font-size:.72em;cursor:pointer;white-space:nowrap;">${w}</button>`).join('')}
+          </div>
+        </div>`).join('');
+      stampPanel.querySelectorAll('.pm-stamp-btn').forEach(btn => {
+        btn.onclick = (ev) => {
+          ev.stopPropagation();
+          const w = btn.dataset.w;
+          inp.value = inp.value ? (inp.value + ' ' + w) : w;
+          inp.focus();
+        };
+      });
+    }
+    stampTgl.onclick = (ev) => {
+      ev.stopPropagation();
+      buildStampPanel();
+      const show = stampPanel.style.display === 'none';
+      stampPanel.style.display = show ? 'block' : 'none';
+      stampTgl.textContent = show ? '▲' : '▼';
+      if (show) {
+        // v0.0056: 開いた後、ダイアログ全体が画面外にはみ出さないよう位置を補正(スクロール発生防止)
+        requestAnimationFrame(() => {
+          const r = wrap.getBoundingClientRect();
+          const margin = 8;
+          let dx = 0, dy = 0;
+          if (r.right  > window.innerWidth  - margin) dx = (window.innerWidth  - margin) - r.right;
+          if (r.bottom > window.innerHeight - margin) dy = (window.innerHeight - margin) - r.bottom;
+          if (r.left + dx < margin) dx = margin - r.left;
+          if (r.top  + dy < margin) dy = margin - r.top;
+          if (dx || dy) {
+            wrap.style.left = (parseFloat(wrap.style.left) + dx) + 'px';
+            wrap.style.top  = (parseFloat(wrap.style.top)  + dy) + 'px';
+          }
+        });
+      }
+      inp.focus();
+    };
 
     const inp = document.getElementById('pm-text-val');
     if (editAnn) inp.value = editAnn.text;
@@ -2602,7 +2686,7 @@
     const vis = ann.visibility || 'visible';
     if (vis === 'hidden') return;
     const s=l2c(ann.x1,ann.y1), t=l2c(ann.x2,ann.y2);
-    const lw    = ARROW_LW[(ann.sizeStep||1)-1] * getPaperScale();
+    const lw    = ARROW_LW[ann.sizeStep??1] * getPaperScale(); // v0.0055: 呼称0対応でindex化方式変更
     const color = ann.color||'#ff4081';
     const dir   = ann.arrowDir || 'fwd'; // fwd=終点のみ矢じり(既定) / rev=始点のみ / both=両端
     pmCtx.save();
@@ -2625,7 +2709,7 @@
     const vis = ann.visibility || 'visible';
     if (vis === 'hidden') return;
     const s=l2c(ann.x1,ann.y1), t=l2c(ann.x2,ann.y2);
-    const lw    = LINE_LW[(ann.sizeStep||1)-1] * getPaperScale();
+    const lw    = LINE_LW[ann.sizeStep??1] * getPaperScale(); // v0.0055: 呼称0対応でindex化方式変更
     const color = ann.color||'#111111';
     // v0.0025: 点線種はダブルクリックで切替(solid/dashA/dashB/dashC=一点鎖線)。
     // 左UIの表示ボタンは他タイプと共通のvisible/translucent/hiddenに戻した
@@ -2655,7 +2739,7 @@
     const vis = ann.visibility || 'visible';
     if (vis === 'hidden') return;
     const c  = l2c(ann.cx, ann.cy);
-    const lw = LINE_LW[(ann.sizeStep||1)-1] * getPaperScale();
+    const lw = LINE_LW[ann.sizeStep??1] * getPaperScale(); // v0.0055: 呼称0対応でindex化方式変更
     const color = ann.color || '#111111';
     const lineStyle = ann.lineStyle || 'solid';
     pmCtx.save();
@@ -3394,8 +3478,8 @@
       btn.onclick=ev=>{ev.stopPropagation();
         const a=steps[currentStep].find(x=>x.uuid===btn.dataset.uuid);
         if(a){
-          // v0.0047: テキストのみ呼称0まで下げられる。||1由来の0化けバグも??1へ修正
-          const min=(a.type==='text')?0:1;
+          // v0.0055: 線・矢印・円もテキストと同様に呼称0まで下げられるように統一。||1由来の0化けバグも??1へ修正
+          const min=0;
           a.sizeStep=Math.max(min,(a.sizeStep??1)-1);updatePlacedList();
         }
       };
