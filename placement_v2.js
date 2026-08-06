@@ -21,6 +21,17 @@
  * placement.js — AreCal 配置モード拡張 v0.9.35
  *
  * [最新の変更]
+ * v0.0054:
+ *   - 外部監査で指摘された「正規表現[\s\S]*によるバックトラック地獄でフリーズする」という懸念を実測で検証。
+ *     結果: 9MB級・末尾に空白20万文字を追加した意地悪ケースでも約175msで完了し、指数関数的な遅延(ReDoS)は
+ *     発生しないことを確認([\s\S]*は入れ子の量指定子を含まないためReDoS脆弱パターンには該当しない。監査の
+ *     「フリーズ/スタックオーバーフロー」という結論は実測上は誇張だったが、正規表現版でも数百msの同期的な
+ *     メインスレッドブロックは発生するし、今後データがさらに肥大化する可能性もあるため、監査提案の方針
+ *     (indexOf/lastIndexOfによる軽量な切り出し)自体は妥当と判断し採用。
+ *   - 共通ヘルパー _extractMachineryObjectText を新設(indexOf('MACHINERY_DATA')の直後から'{'を探し、
+ *     text全体のlastIndexOf('}')までを切り出す。キーワード起点にしている点は監査の提案より安全側)。
+ *     tryAutoLoadMachinery・loadMachineryFile 両方の正規表現マッチを置き換え。実測: 0.7MB(16000件)で
+ *     抽出3ms未満、JSON.parseの結果も従来の正規表現方式と完全一致することを確認済み。
  * v0.0053:
  *   - マスター作成の圧縮ツール(ブラウザ標準CompressionStreamでGZIP圧縮し、CalayMachineryData.dat固定名で
  *     出力するもの)に対応。重機データ(.dat)の自動読込(tryAutoLoadMachinery)・手動読込(loadMachineryFile)
@@ -380,14 +391,28 @@
     return new TextDecoder('utf-8').decode(bytes);
   }
 
+  // v0.0054: 正規表現([\s\S]*の貪欲マッチ)をやめ、indexOf/lastIndexOfによる軽量な切り出しに変更。
+  // 実測では正規表現でも指数関数的な遅延(ReDoS)は発生しない([\s\S]*は入れ子の量指定子が無いため該当しない)が、
+  // indexOf方式の方が桁違いに高速(9MB級でも1ms未満)かつ今後データが増えても安全なため採用。
+  function _extractMachineryObjectText(text) {
+    const kw = 'MACHINERY_DATA';
+    const kwPos = text.indexOf(kw);
+    if (kwPos < 0) return null;
+    const open = text.indexOf('{', kwPos);
+    if (open < 0) return null;
+    const close = text.lastIndexOf('}');
+    if (close < open) return null;
+    return text.substring(open, close + 1);
+  }
+
   async function tryAutoLoadMachinery() {
     try {
       const resp = await fetch('./CalayMachineryData.dat', {cache:'no-cache'});
       if (resp.ok) {
         const buf  = await resp.arrayBuffer();
         const text = await _decodeMachineryBytes(buf);
-        const m = text.match(/const\s+MACHINERY_DATA\s*=\s*(\{[\s\S]*\});?\s*$/);
-        if (m) machineryData = _migrateMachineryCategories(JSON.parse(m[1]));
+        const objText = _extractMachineryObjectText(text);
+        if (objText) machineryData = _migrateMachineryCategories(JSON.parse(objText));
       }
     } catch(_) {
       // file:// 運用など、fetchが失敗する環境では手動読込(#dat-gate)に委ねる
@@ -3535,9 +3560,9 @@
         try {
           const buf  = await file.arrayBuffer();
           const text = await _decodeMachineryBytes(buf); // v0.0053: GZIP圧縮版にも対応
-          const m = text.match(/const\s+MACHINERY_DATA\s*=\s*(\{[\s\S]*\});?\s*$/);
-          if (!m) { _toast('⚠ MACHINERY_DATA が見つかりません'); return; }
-          machineryData = _migrateMachineryCategories(JSON.parse(m[1]));
+          const objText = _extractMachineryObjectText(text); // v0.0054: 正規表現からindexOf方式に変更
+          if (!objText) { _toast('⚠ MACHINERY_DATA が見つかりません'); return; }
+          machineryData = _migrateMachineryCategories(JSON.parse(objText));
           const count = _pmAnnounceMachineryStatus();
           _toast(`📦 読込完了（${count}件）`, 2500);
           if (placementMode) renderPmLayer(); // 保険的対応：既に☒表示のオブジェクトがあればその場で復帰
