@@ -21,6 +21,23 @@
  * placement.js — AreCal 配置モード拡張 v0.9.35
  *
  * [最新の変更]
+ * v0.0053:
+ *   - マスター作成の圧縮ツール(ブラウザ標準CompressionStreamでGZIP圧縮し、CalayMachineryData.dat固定名で
+ *     出力するもの)に対応。重機データ(.dat)の自動読込(tryAutoLoadMachinery)・手動読込(loadMachineryFile)
+ *     の両方で、ファイル先頭2バイトのGZIPマジックナンバー(0x1f,0x8b)を見て圧縮/非圧縮を自動判別し、
+ *     圧縮されていればDecompressionStream('gzip')で展開してから従来通りMACHINERY_DATAをパースするよう変更
+ *     (共通ヘルパー _decodeMachineryBytes を新設)。旧来の非圧縮.datファイルもそのまま読み込める。
+ *     手動読込側はFileReader.readAsTextからfile.arrayBuffer()ベースに変更。
+ * v0.0052:
+ *   - Chromeのタッチエミュレートによる検証で「一度選択したオブジェクトを空白タップで選択解除できない」
+ *     不具合を確認。document pointerdownハンドラ内で `if(hit){...handleEditClick(e,hit)}` となっており、
+ *     何もヒットしなかった場合にhandleEditClick自体が呼ばれず、関数内部の「!hit→selectedUuids.clear()」
+ *     (空クリックで選択解除するためのコード)が常にデッドコードになっていたのが原因。hit有無に関わらず
+ *     必ずhandleEditClickを呼ぶよう修正(stopPropagationはhitがある時のみ従来通り)。
+ * v0.0051:
+ *   - 実機(iPad Pro)テストで、Arecalayの配置オブジェクトが左UIには反映されるがpm-cv上に描画されない
+ *     不具合を確認。AreCal本体のdraw-cv(v0.0440)と同根と判断し、pm-cv生成時にwill-change:'transform'を
+ *     付与してGPUレイヤーを確保。※修正後の実機再確認はまだ。
  * v0.0050:
  *   - 【タブレット・ハイブリッド対応 Step1】マウス専用イベント(mousedown/mousemove/mouseup)を
  *     全てPointer Events(pointerdown/pointermove/pointerup)に機械的置換。{capture:true}等のオプションや
@@ -346,11 +363,29 @@
     return count;
   }
 
+  // v0.0053: 重機データ(.dat)がGZIP圧縮されている場合に自動展開してからテキスト化する共通ヘルパー。
+  // 先頭2バイトがGZIPマジックナンバー(0x1f,0x8b)かどうかで、圧縮版/従来の生テキスト版を自動判別する
+  // (=旧来の非圧縮.datファイルも引き続きそのまま読み込める)。
+  async function _decodeMachineryBytes(buf) {
+    const bytes = new Uint8Array(buf);
+    const isGzip = bytes.length > 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+    if (isGzip) {
+      if (typeof DecompressionStream !== 'function') {
+        throw new Error('このブラウザはGZIP展開(DecompressionStream)に対応していません');
+      }
+      const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+      const blob = await new Response(stream).blob();
+      return await blob.text();
+    }
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+
   async function tryAutoLoadMachinery() {
     try {
       const resp = await fetch('./CalayMachineryData.dat', {cache:'no-cache'});
       if (resp.ok) {
-        const text = await resp.text();
+        const buf  = await resp.arrayBuffer();
+        const text = await _decodeMachineryBytes(buf);
         const m = text.match(/const\s+MACHINERY_DATA\s*=\s*(\{[\s\S]*\});?\s*$/);
         if (m) machineryData = _migrateMachineryCategories(JSON.parse(m[1]));
       }
@@ -365,7 +400,8 @@
     pmCv.id = 'pm-cv';
     Object.assign(pmCv.style, {
       position:'absolute', display:'none', left:'0', top:'0',
-      zIndex:'11', pointerEvents:'none', transformOrigin:'0 0'
+      zIndex:'11', pointerEvents:'none', transformOrigin:'0 0',
+      willChange:'transform' // v0.0051: iOS Safariでの再描画コンポジット不具合対策(AreCal側draw-cvと同じ対応)
     });
     const cvw = document.getElementById('cv-wrap');
     if (cvw) cvw.appendChild(pmCv);
@@ -759,10 +795,11 @@
           return;
         } else {
           const hit = hitTestCSS(e.clientX-pdfCvLeft, e.clientY-pdfCvTop);
-          if (hit) {
-            e.stopPropagation();
-            handleEditClick(e, hit);
-          }
+          if (hit) e.stopPropagation();
+          // v0.0051: 元は if(hit){...handleEditClick} で、何もない場所をクリックした時に
+          // handleEditClick(e,null)が一切呼ばれず、内部の「!hit→selectedUuids.clear()」が
+          // 常にデッドコードになっていた(選択解除する手段が無いバグ)。hit有無に関わらず必ず呼ぶよう修正。
+          handleEditClick(e, hit);
         }
       }
     }, {capture:true});
@@ -3494,10 +3531,10 @@
     inp.onchange = () => {
       const file = inp.files[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = ev => {
+      (async () => {
         try {
-          const text = ev.target.result;
+          const buf  = await file.arrayBuffer();
+          const text = await _decodeMachineryBytes(buf); // v0.0053: GZIP圧縮版にも対応
           const m = text.match(/const\s+MACHINERY_DATA\s*=\s*(\{[\s\S]*\});?\s*$/);
           if (!m) { _toast('⚠ MACHINERY_DATA が見つかりません'); return; }
           machineryData = _migrateMachineryCategories(JSON.parse(m[1]));
@@ -3509,8 +3546,7 @@
           _toast('⚠ 読み込みエラー（形式確認してください）');
           console.error('[Arecalay] loadMachineryFile:', err);
         }
-      };
-      reader.readAsText(file, 'UTF-8');
+      })();
     };
     inp.click();
   }
