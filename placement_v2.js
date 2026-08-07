@@ -21,6 +21,17 @@
  * placement.js — AreCal 配置モード拡張 v0.9.35
  *
  * [最新の変更]
+ * v0.0057:
+ *   - 定型文スタンプの挙動を要望に合わせて調整。1)パネルを開いた時だけ、画面内に収まる範囲でダイアログの
+ *     横幅を動的に広げるようにし(閉じている時は元の幅のまま)、固定max-width/max-heightをやめて
+ *     window.innerWidth/innerHeightから残り表示可能な幅・高さを都度計算するよう変更(ページ全体のスクロールは
+ *     発生させない方針は維持、入りきらない場合のみパネル内部がoverflow-y:autoでスクロール)。
+ *     2)定型文ボタンを1個クリックしたら自動でパネルを閉じる(▲→▼)よう変更(旧: 複数選択可のまま開いたまま)。
+ *     3)「BM」(ベンチマークの略)を英数グループから「は」行(べ)へ移動。4)追加希望のあった以下26語を
+ *     読みに応じて五十音各行へ振り分けて追加、「ら」行を新設(英数グループは全て解消し廃止):
+ *     切梁(か)・山留(や)・SMW(あ)・矢板(や)・AP(あ)・FL(あ)・GL(か)・捨てコン(さ)・TP(た)・床付け(た)・
+ *     レベルコン(ら)・路床(ら)・路盤(ら)・表層(は)・基層(か)・砕石(さ)・アスファルト(あ)・AS(あ)・
+ *     コンクリート(か)・Con(か)・基礎(か)・躯体(か)・立面図(ら)・断面図(た)・平面図(は)・ヤード(や)・掘削範囲(か)
  * v0.0056:
  *   - テキスト入力ダイアログに「定型文スタンプ」機能を追加。入力欄の右に▼ボタンを新設し、押すと
  *     五十音行ごとに整理された定型文ボタン一覧(現場で使う用語约90語)を展開。クリックで入力欄に
@@ -1836,7 +1847,7 @@
           style="padding:5px 12px;background:${borderColor};border:none;color:#000;
                  border-radius:4px;cursor:pointer;font-weight:700;font-size:.82em;">✓</button>
       </div>
-      <div id="pm-text-stamp-panel" style="display:none;max-width:420px;max-height:220px;overflow-y:auto;
+      <div id="pm-text-stamp-panel" style="display:none;overflow-y:auto;
         background:rgba(0,0,0,.25);border:1px solid #333;border-radius:5px;padding:6px 7px;"></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div id="pm-text-colors" style="display:flex;gap:4px;">
@@ -1857,22 +1868,24 @@
       </div>`;
     document.body.appendChild(wrap);
 
-    // v0.0056: 定型文スタンプ機能。▼ボタンでテキスト候補を五十音行ごとに一覧表示し、クリックで入力欄に追記する
+    // v0.0057: 定型文スタンプ機能。▼ボタンでテキスト候補を五十音行ごとに一覧表示し、クリックで入力欄に追記する
     const STAMP_GROUPS = [
-      ['あ', ['アウトリガー張出','足場組立範囲','足元注意','安全設備','安全通路','親綱']],
+      ['あ', ['アウトリガー張出','足場組立範囲','足元注意','安全設備','安全通路','親綱',
+               'SMW','矢板','AP','FL','アスファルト','AS']],
       ['か', ['開口部注意','概算数量','火気厳禁','火気使用','仮囲い','仮置き','仮設トイレ','感電注意',
-               '基準点','既存構造物','既存利用','休憩所','クレーン作業','ゲート','現場事務所',
-               '工事車両進入路','高所作業','コンクリート打設範囲']],
+               '基準点','既存構造物','既存利用','休憩所','切梁','クレーン作業','ゲート','GL','現場事務所',
+               '工事車両進入路','高所作業','コンクリート打設範囲','コンクリート','Con','基礎','躯体','基層','掘削範囲']],
       ['さ', ['作業エリア','作業時間','作業半径','参考図','残工事','残土置場','資機材置場','資材置場',
                '車両ルート','重機作業中','消火器','消火設備','頭上注意','施工範囲','設置範囲','旋回範囲',
-               '先行工事','洗車場','測点']],
+               '先行工事','洗車場','測点','砕石','捨てコン']],
       ['た', ['第三者立入禁止','待機場所','立入禁止','玉掛作業','丁張','墜落注意','吊荷下立入禁止',
-               '手摺','転落注意','土砂仮置場']],
+               '手摺','転落注意','土砂仮置場','TP','床付け','断面図']],
       ['な', ['法肩','法面']],
-      ['は', ['排水処理','搬出経路','搬入経路','飛来落下注意','分電盤','別途','別途工事','保安設備','歩行者通路']],
+      ['は', ['排水処理','搬出経路','搬入経路','飛来落下注意','分電盤','別途','別途工事','保安設備','歩行者通路',
+               'BM','表層','平面図']],
       ['ま', ['埋設物','水替え','見積範囲','見積範囲外']],
-      ['や', ['誘導員配置','要確認','要協議']],
-      ['英数', ['BM']],
+      ['や', ['誘導員配置','要確認','要協議','山留','ヤード']],
+      ['ら', ['レベルコン','路床','路盤','立面図']],
     ];
     const stampPanel = document.getElementById('pm-text-stamp-panel');
     const stampTgl    = document.getElementById('pm-text-stamp-tgl');
@@ -1894,6 +1907,9 @@
           ev.stopPropagation();
           const w = btn.dataset.w;
           inp.value = inp.value ? (inp.value + ' ' + w) : w;
+          // v0.0057: 1個選んだら自動的にパネルを閉じる(▲→▼)
+          stampPanel.style.display = 'none';
+          stampTgl.textContent = '▼';
           inp.focus();
         };
       });
@@ -1902,7 +1918,20 @@
       ev.stopPropagation();
       buildStampPanel();
       const show = stampPanel.style.display === 'none';
-      stampPanel.style.display = show ? 'block' : 'none';
+      if (show) {
+        // v0.0057: 開いた時だけ画面内に収まる範囲で横幅を広げる(ページ全体はスクロールさせない)。
+        // 縦方向は残りの表示可能高さに収め、それでも入りきらない場合だけパネル内部をoverflow-y:autoでスクロール
+        const margin = 10;
+        const wr = wrap.getBoundingClientRect();
+        const availW = window.innerWidth  - margin*2;
+        const availH = window.innerHeight - wr.top - margin;
+        stampPanel.style.width    = Math.min(640, availW) + 'px';
+        stampPanel.style.maxWidth = availW + 'px';
+        stampPanel.style.maxHeight= Math.max(80, availH) + 'px';
+        stampPanel.style.display  = 'block';
+      } else {
+        stampPanel.style.display  = 'none';
+      }
       stampTgl.textContent = show ? '▲' : '▼';
       if (show) {
         // v0.0056: 開いた後、ダイアログ全体が画面外にはみ出さないよう位置を補正(スクロール発生防止)
