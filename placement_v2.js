@@ -18,25 +18,110 @@
  *    作成し利用・頒布することを固く禁じます。
  * ================================================================
  *
- * placement.js — AreCal 配置モード拡張 v0.9.32
+ * placement.js — AreCal 配置モード拡張 v0.9.35
  *
  * [最新の変更]
+ * v0.0059:
+ *   - マスターより「前回0430ベースの誤ったブランチで作業してしまった」との指摘を受け、
+ *     このv0.0058ベースへ改めて4項目を適用(番号は指示書どおり)：
+ *     ①テキストの縁UI(MojiWaku)は「白地黒文字／黒地白文字」化という描画方式そのものの変更を伴う
+ *     ため、drawText()中枢や選択・ホバー表示との相互作用の精査が必要と判断し、今回は保留(要相談)。
+ *     ②矢印/線プレビューの太さ不一致を修正。v0.0055でsizeStep系を直接index方式に統一した際、
+ *     プレビュー側(defArrowStep-1 / defLineStep-1 ＋ 太さ0.7倍)だけ追従できていなかった取り残しが
+ *     真因。ARROW_LW[defArrowStep]・LINE_LW[defLineStep]をそのまま使い、0.7倍も廃止して実際の
+ *     描画と完全一致させた。
+ *     ③円ツールの半径入力ダイアログ(promptCircleRadius)を廃止。中心クリックと同時に、
+ *     作図エリア(pdf-cv実寸)の縦横長い方の10%を半径として即時作図するplaceCircleDefault()に
+ *     置き換え。半径の微調整は従来通りグリップドラッグで行う。
+ *     ④PDF出力ファイル名のプレフィックスをplacement_→Arecal_に変更。
+ *     ⑦操作ガイド最終行「AreCal図形はこのモードでは操作不可」を1.15em・2行表示に変更。
+ *   - あわせて、内部バージョン定数ARECALAY_VERが実際にはv0.0046のまま長期間更新されておらず、
+ *     このchangelogの実際の到達バージョン(v0.0058)と食い違っていたため、今回0.0059へ修正。
+ *     (画面右下のバージョン表示が実態と異なって見えていたのはこの定数の更新漏れが原因)
+ * v0.0058:
+ *   - 定型文スタンプ(STAMP_GROUPS)の収録語をマスター指定の新リストへ全面差し替え(ボタン変更.txt)。
+ *     矢板をあ行→や行へ移動、FL・感電注意を削除、既存構造物/既存利用→「既存」に統合、
+ *     工事車両進入路→「工事車両」、コンクリート打設範囲→「打設範囲」(た行へ移動)、
+ *     第三者立入禁止→「第三者」、吊荷下立入禁止→「吊荷」に短縮、GLをか行→さ行へ移動。
+ *   - 【外部AI監査対応】配置モードのスケール依存バグを解消。buildPmSaveData()の保存データに
+ *     保存時点のAreCal本体スケール(scaleDenom)を追加。読込側applyPmData()で、保存時スケールと
+ *     読込直後(AreCal側のapplyArecDataで復元済み)の現在スケールを比較し、不一致であれば
+ *     「配置位置がずれている可能性があります」とtoast警告を出すよう対応(座標の自動補正は
+ *     誤補正リスクを避けるため行わず、警告に留める安全策とした)。
+ * v0.0057:
+ *   - 定型文スタンプの挙動を要望に合わせて調整。1)パネルを開いた時だけ、画面内に収まる範囲でダイアログの
+ *     横幅を動的に広げるようにし(閉じている時は元の幅のまま)、固定max-width/max-heightをやめて
+ *     window.innerWidth/innerHeightから残り表示可能な幅・高さを都度計算するよう変更(ページ全体のスクロールは
+ *     発生させない方針は維持、入りきらない場合のみパネル内部がoverflow-y:autoでスクロール)。
+ *     2)定型文ボタンを1個クリックしたら自動でパネルを閉じる(▲→▼)よう変更(旧: 複数選択可のまま開いたまま)。
+ *     3)「BM」(ベンチマークの略)を英数グループから「は」行(べ)へ移動。4)追加希望のあった以下26語を
+ *     読みに応じて五十音各行へ振り分けて追加、「ら」行を新設(英数グループは全て解消し廃止):
+ *     切梁(か)・山留(や)・SMW(あ)・矢板(や)・AP(あ)・FL(あ)・GL(か)・捨てコン(さ)・TP(た)・床付け(た)・
+ *     レベルコン(ら)・路床(ら)・路盤(ら)・表層(は)・基層(か)・砕石(さ)・アスファルト(あ)・AS(あ)・
+ *     コンクリート(か)・Con(か)・基礎(か)・躯体(か)・立面図(ら)・断面図(た)・平面図(は)・ヤード(や)・掘削範囲(か)
+ * v0.0056:
+ *   - テキスト入力ダイアログに「定型文スタンプ」機能を追加。入力欄の右に▼ボタンを新設し、押すと
+ *     五十音行ごとに整理された定型文ボタン一覧(現場で使う用語约90語)を展開。クリックで入力欄に
+ *     半角スペース区切りで追記(複数連続選択可、パネルは自動では閉じない)。パネルはmax-width/max-height
+ *     +overflow-y:autoで内部スクロールに留め、開いた際にダイアログ全体が画面端からはみ出す場合は
+ *     位置を自動補正(ページ全体のスクロールが発生しないようにする対応)。参考用に貰ったサンプルHTML
+ *     (色/サイズ項目なし・左詰め単純折返し)は元々の実装に既にある色/サイズUIとは別物のため、その2項目は
+ *     そのまま流用せず、五十音の行見出し付きレイアウトで独自に整理して実装。
+ * v0.0055:
+ *   - Arecalayの「線」「矢印」「円」に、テキストと同様の呼称「0」(現行の1より細い最小サイズ)を追加。
+ *     ARROW_LW/LINE_LWの先頭に0番目の値を追加し、参照方式を旧来の(sizeStep||1)-1(1始まりのindex変換)から
+ *     TEXT_FSと同じ sizeStep??1 の直接index方式に統一。デフォルトサイズ選択(defArrowStep/defLineStep)の
+ *     下限、および左UIの-ボタンの下限もtext限定(0)から全タイプ共通(0)に変更。
+ * v0.0054:
+ *   - 外部監査で指摘された「正規表現[\s\S]*によるバックトラック地獄でフリーズする」という懸念を実測で検証。
+ *     結果: 9MB級・末尾に空白20万文字を追加した意地悪ケースでも約175msで完了し、指数関数的な遅延(ReDoS)は
+ *     発生しないことを確認([\s\S]*は入れ子の量指定子を含まないためReDoS脆弱パターンには該当しない。監査の
+ *     「フリーズ/スタックオーバーフロー」という結論は実測上は誇張だったが、正規表現版でも数百msの同期的な
+ *     メインスレッドブロックは発生するし、今後データがさらに肥大化する可能性もあるため、監査提案の方針
+ *     (indexOf/lastIndexOfによる軽量な切り出し)自体は妥当と判断し採用。
+ *   - 共通ヘルパー _extractMachineryObjectText を新設(indexOf('MACHINERY_DATA')の直後から'{'を探し、
+ *     text全体のlastIndexOf('}')までを切り出す。キーワード起点にしている点は監査の提案より安全側)。
+ *     tryAutoLoadMachinery・loadMachineryFile 両方の正規表現マッチを置き換え。実測: 0.7MB(16000件)で
+ *     抽出3ms未満、JSON.parseの結果も従来の正規表現方式と完全一致することを確認済み。
+ * v0.0053:
+ *   - マスター作成の圧縮ツール(ブラウザ標準CompressionStreamでGZIP圧縮し、CalayMachineryData.dat固定名で
+ *     出力するもの)に対応。重機データ(.dat)の自動読込(tryAutoLoadMachinery)・手動読込(loadMachineryFile)
+ *     の両方で、ファイル先頭2バイトのGZIPマジックナンバー(0x1f,0x8b)を見て圧縮/非圧縮を自動判別し、
+ *     圧縮されていればDecompressionStream('gzip')で展開してから従来通りMACHINERY_DATAをパースするよう変更
+ *     (共通ヘルパー _decodeMachineryBytes を新設)。旧来の非圧縮.datファイルもそのまま読み込める。
+ *     手動読込側はFileReader.readAsTextからfile.arrayBuffer()ベースに変更。
+ * v0.0052:
+ *   - Chromeのタッチエミュレートによる検証で「一度選択したオブジェクトを空白タップで選択解除できない」
+ *     不具合を確認。document pointerdownハンドラ内で `if(hit){...handleEditClick(e,hit)}` となっており、
+ *     何もヒットしなかった場合にhandleEditClick自体が呼ばれず、関数内部の「!hit→selectedUuids.clear()」
+ *     (空クリックで選択解除するためのコード)が常にデッドコードになっていたのが原因。hit有無に関わらず
+ *     必ずhandleEditClickを呼ぶよう修正(stopPropagationはhitがある時のみ従来通り)。
+ * v0.0051:
+ *   - 実機(iPad Pro)テストで、Arecalayの配置オブジェクトが左UIには反映されるがpm-cv上に描画されない
+ *     不具合を確認。AreCal本体のdraw-cv(v0.0440)と同根と判断し、pm-cv生成時にwill-change:'transform'を
+ *     付与してGPUレイヤーを確保。※修正後の実機再確認はまだ。
+ * v0.0050:
+ *   - 【タブレット・ハイブリッド対応 Step1】マウス専用イベント(mousedown/mousemove/mouseup)を
+ *     全てPointer Events(pointerdown/pointermove/pointerup)に機械的置換。{capture:true}等のオプションや
+ *     ハンドラ中身のロジックは無変更。テキスト入力ダイアログのoutsideリスナー・機材ピッカーの枠外クリック・
+ *     Arecalay独自PDF範囲選択のonDown/onMove/onUpも同様に置換。dblclick等は今回対象外。
+ *     2本指ピンチズーム&パン・タッチ座標オフセットはStep2以降で対応予定。※実機(iPad Pro)未確認。
+ * v0.0049:
+ *   - showTextInput()のテキスト入力ダイアログで、Enter/OKボタン/Escで閉じた場合に
+ *     枠外クリック検知用のmousedownリスナー(outside)がdocument側から解除されず残る
+ *     不具合を修正。cleanup()関数に閉じる処理とリスナー解除を集約し、確定/Escキー/
+ *     枠外クリックの全経路から呼ぶよう整理。
  * v0.0048:
- *   - マスター要望(1番)：テキストの「エッジ切替」ボタン(左UI)を、縁/無/逆の3状態
- *     サイクルに変更。縁(edge-frame)=白地に黒文字、無(edge-primary)=現状維持(背景無し・
- *     自動配色の縁取りのみ)、逆(edge-reverse)=黒地に白文字＋文字自体にも縁取りを追加。
- *     個別の非表示は廃止(種別表示の一括非表示機能に任せる)。種別表示(一括切替)機能が使う
- *     hidden/edge-secondary(半透明)は後方互換のため描画側にそのまま残した。
- *   - 矢印・線ツールで、1点目クリック後に表示される仮想プレビュー線の太さが実際に作図
- *     される太さと違っていた(プレビューだけ0.7倍で細く見えていた)バグを修正。等倍に統一。
- *   - 円ツールの「半径を入力」ダイアログを廃止。中心をクリックした瞬間、作図エリア(PDF
- *     サイズ)の縦横長い方の10%を半径として即座に作図する方式に変更。大きさ調整は作図後に
- *     グリップをドラッグして行う。
- *   - PDF出力ファイル名のプレフィックスを「placement_」→「Arecal_」に変更。
+ *   - MojiWakuアイコンの表記を「縁/非/反」→「縁/無/逆」に変更(視認性向上)。
+ *   - 呼称0の文字サイズを28px→20pxに変更。
  * v0.0047:
- *   - 円選択時、中心にクロスマークを表示(選択時のみ)。
- *   - 距離測定でShift直交モード中、AreCal側が公開する確定カーソル座標(distCursorX/Y)を
- *     参照するように変更し、生マウス座標に追従する余分なゴムラインの2重表示を解消。
+ *   - テキストの文字サイズ呼称に「0」を新設(既存の1〜5より一段小さいサイズ)。TEXT_FSを
+ *     [28,40,56,80,112,160]に変更し、呼称0〜5をそのまま配列indexとして参照する方式に統一
+ *     (旧: sizeStep-1でindex化 → 新: sizeStepをそのままindex化)。あわせて各所の
+ *     `sizeStep||1`(0が偽値になり1へ化けるバグ)を`sizeStep??1`へ修正。
+ *   - テキスト注釈にMojiWaku(文字枠)という新規プロパティを追加。デフォルト0(通常の縁取り)、
+ *     1で外周エッジライン非表示、2でエッジライン色を反転(白⇔黒)。左UIの配置リストで、
+ *     文字サイズ変更ボタンの右にアイコンボタンを追加し、押すたびに0→1→2→0で循環する。
  * v0.0046:
  *   - 免責事項コメント本文から「（旧称・愛称：OSAKI Tech Lab）」の表記を削除し、
  *     「大崎建設株式会社 ICT推進室が独自に開発したものであり、」に統一。
@@ -178,14 +263,14 @@
 (function () {
   'use strict';
 
-  const ARECALAY_VER = '0.0048';
+  const ARECALAY_VER = '0.0059'; // v0.0442(HTML)/0.0059(js): 実態(changelog)と食い違っていた表示バージョンを修正
   window._pmVersion = ARECALAY_VER;
   const COLORS      = ['#ff4081','#e8a020','#188C1C','#1B3EAB','#aaaaaa','#ff8c00','#111111'];
   const PM_UNDO_MAX = 30;
   
-  const ARROW_LW    = [14, 21, 33, 57, 90];  // 太さは元に戻す（矢じりだけ拡大方針に変更）
-  const LINE_LW     = [7, 10, 14, 21, 33, 57, 90];   // 線を7段階化(3~7は矢印の太さ1~5と同じ値)
-  const TEXT_FS     = [40, 56, 80, 112, 160]; 
+  const ARROW_LW    = [7, 14, 21, 33, 57, 90];  // v0.0055: 呼称0(index0)を新設。太さは元に戻す（矢じりだけ拡大方針に変更）
+  const LINE_LW     = [4, 7, 10, 14, 21, 33, 57, 90];   // v0.0055: 呼称0(index0)を新設。線を7段階化(3~7は矢印の太さ1~5と同じ値)
+  const TEXT_FS     = [20, 40, 56, 80, 112, 160]; // v0.0048: 呼称0のサイズを20pxに変更(index0=呼称0)
 
   let placementMode = false;
   let pmIoMenuOpen = false, pmIoWriteOpen = false; // v0.0408: 入出力メニュー統一用
@@ -340,13 +425,45 @@
     return count;
   }
 
+  // v0.0053: 重機データ(.dat)がGZIP圧縮されている場合に自動展開してからテキスト化する共通ヘルパー。
+  // 先頭2バイトがGZIPマジックナンバー(0x1f,0x8b)かどうかで、圧縮版/従来の生テキスト版を自動判別する
+  // (=旧来の非圧縮.datファイルも引き続きそのまま読み込める)。
+  async function _decodeMachineryBytes(buf) {
+    const bytes = new Uint8Array(buf);
+    const isGzip = bytes.length > 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+    if (isGzip) {
+      if (typeof DecompressionStream !== 'function') {
+        throw new Error('このブラウザはGZIP展開(DecompressionStream)に対応していません');
+      }
+      const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+      const blob = await new Response(stream).blob();
+      return await blob.text();
+    }
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+
+  // v0.0054: 正規表現([\s\S]*の貪欲マッチ)をやめ、indexOf/lastIndexOfによる軽量な切り出しに変更。
+  // 実測では正規表現でも指数関数的な遅延(ReDoS)は発生しない([\s\S]*は入れ子の量指定子が無いため該当しない)が、
+  // indexOf方式の方が桁違いに高速(9MB級でも1ms未満)かつ今後データが増えても安全なため採用。
+  function _extractMachineryObjectText(text) {
+    const kw = 'MACHINERY_DATA';
+    const kwPos = text.indexOf(kw);
+    if (kwPos < 0) return null;
+    const open = text.indexOf('{', kwPos);
+    if (open < 0) return null;
+    const close = text.lastIndexOf('}');
+    if (close < open) return null;
+    return text.substring(open, close + 1);
+  }
+
   async function tryAutoLoadMachinery() {
     try {
       const resp = await fetch('./CalayMachineryData.dat', {cache:'no-cache'});
       if (resp.ok) {
-        const text = await resp.text();
-        const m = text.match(/const\s+MACHINERY_DATA\s*=\s*(\{[\s\S]*\});?\s*$/);
-        if (m) machineryData = _migrateMachineryCategories(JSON.parse(m[1]));
+        const buf  = await resp.arrayBuffer();
+        const text = await _decodeMachineryBytes(buf);
+        const objText = _extractMachineryObjectText(text);
+        if (objText) machineryData = _migrateMachineryCategories(JSON.parse(objText));
       }
     } catch(_) {
       // file:// 運用など、fetchが失敗する環境では手動読込(#dat-gate)に委ねる
@@ -359,7 +476,8 @@
     pmCv.id = 'pm-cv';
     Object.assign(pmCv.style, {
       position:'absolute', display:'none', left:'0', top:'0',
-      zIndex:'11', pointerEvents:'none', transformOrigin:'0 0'
+      zIndex:'11', pointerEvents:'none', transformOrigin:'0 0',
+      willChange:'transform' // v0.0051: iOS Safariでの再描画コンポジット不具合対策(AreCal側draw-cvと同じ対応)
     });
     const cvw = document.getElementById('cv-wrap');
     if (cvw) cvw.appendChild(pmCv);
@@ -497,7 +615,7 @@
         ドラッグ：グリップを掴んで移動・変形<br>
         矢印キー：選択中を微調整移動（Shiftで大きく）<br>
         Del/Backspace：選択中の図形を削除<br>
-        <span style="color:#CACACA;font-size:1.2em;">「AreCal」で描いた図形は<br>このモードでは操作不可</span>
+        <span style="color:#CACACA;font-size:1.15em;line-height:1.5;">AreCal で描いた図形は<br>このモードでは操作不可</span>
       </div>
 
       <button id="pm-clear-btn" style="width:100%;margin-top:4px;padding:7px;
@@ -580,7 +698,7 @@
     pmRightPanel.querySelector('#pm-copy-btn').onclick      = showCopyDialog;
 
     pmRightPanel.querySelector('#pm-arrow-step-dn').onclick = () => {
-      defArrowStep = Math.max(1,defArrowStep-1);
+      defArrowStep = Math.max(0,defArrowStep-1); // v0.0055: 呼称0を追加
       pmRightPanel.querySelector('#pm-arrow-step-lbl').textContent = defArrowStep;
     };
     pmRightPanel.querySelector('#pm-arrow-step-up').onclick = () => {
@@ -588,7 +706,7 @@
       pmRightPanel.querySelector('#pm-arrow-step-lbl').textContent = defArrowStep;
     };
     pmRightPanel.querySelector('#pm-line-step-dn').onclick = () => {
-      defLineStep = Math.max(1,defLineStep-1);
+      defLineStep = Math.max(0,defLineStep-1); // v0.0055: 呼称0を追加
       pmRightPanel.querySelector('#pm-line-step-lbl').textContent = defLineStep;
     };
     pmRightPanel.querySelector('#pm-line-step-up').onclick = () => {
@@ -596,7 +714,7 @@
       pmRightPanel.querySelector('#pm-line-step-lbl').textContent = defLineStep;
     };
     pmRightPanel.querySelector('#pm-text-step-dn').onclick = () => {
-      defTextStep = Math.max(1,defTextStep-1);
+      defTextStep = Math.max(0,defTextStep-1); // v0.0047: 呼称0を追加
       pmRightPanel.querySelector('#pm-text-step-lbl').textContent = defTextStep;
     };
     pmRightPanel.querySelector('#pm-text-step-up').onclick = () => {
@@ -727,7 +845,7 @@
       }
     }, {capture:true});
 
-    document.addEventListener('mousedown', function(e) {
+    document.addEventListener('pointerdown', function(e) { // v0.0050: タブレット対応Step1でpointerdownに置換(中身は無変更)
       if (!placementMode) return;
       const drawCv = document.getElementById('draw-cv');
       if (e.target !== drawCv && e.target !== pmCv) return;
@@ -753,15 +871,16 @@
           return;
         } else {
           const hit = hitTestCSS(e.clientX-pdfCvLeft, e.clientY-pdfCvTop);
-          if (hit) {
-            e.stopPropagation();
-            handleEditClick(e, hit);
-          }
+          if (hit) e.stopPropagation();
+          // v0.0051: 元は if(hit){...handleEditClick} で、何もない場所をクリックした時に
+          // handleEditClick(e,null)が一切呼ばれず、内部の「!hit→selectedUuids.clear()」が
+          // 常にデッドコードになっていた(選択解除する手段が無いバグ)。hit有無に関わらず必ず呼ぶよう修正。
+          handleEditClick(e, hit);
         }
       }
     }, {capture:true});
 
-    document.addEventListener('mousemove', function(e) {
+    document.addEventListener('pointermove', function(e) { // v0.0050: タブレット対応Step1でpointermoveに置換(中身は無変更)
       if (!placementMode) return;
       _pmLastMouseCX = e.clientX; _pmLastMouseCY = e.clientY; // v0.0413: 3)
       if (dragState) {
@@ -804,7 +923,7 @@
       }
     }, {capture:true});
 
-    document.addEventListener('mouseup', function(e) {
+    document.addEventListener('pointerup', function(e) { // v0.0050: タブレット対応Step1でpointerupに置換(中身は無変更)
       if (!placementMode || !dragState) return;
       e.stopPropagation();
       endDrag();
@@ -1020,7 +1139,7 @@
     document.body.appendChild(dlg);
 
     document.getElementById('pm-mp-close').onclick = () => closeMachineryPicker();
-    dlg.addEventListener('mousedown', e => { if (e.target === dlg) closeMachineryPicker(); });
+    dlg.addEventListener('pointerdown', e => { if (e.target === dlg) closeMachineryPicker(); }); // v0.0050: pointerdownに置換
 
     // 前回のカテゴリー/区分フィルターを復元
     const catSel = dlg.querySelector('#pm-mp-cat');
@@ -1385,17 +1504,17 @@
       }
       return;
     }
-    if (annotMode==='circle') { placeCircleInstant(lx, ly); return; }
+    if (annotMode==='circle') { placeCircleDefault(lx, ly); return; }
     if (annotMode==='text') showTextInput(e.clientX, e.clientY, lx, ly);
   }
 
-  // v0.0048: 円ツール(B4) — マスター要望により「半径を入力」ダイアログを廃止。
-  // 中心をクリックした瞬間、作図エリア(PDFサイズ=pdf-cvの実寸)の縦横長い方の10%を
-  // 半径として即座に作図する。大きさ調整は作図後にグリップをドラッグして行う。
-  function placeCircleInstant(centerLx, centerLy) {
+  // v0.0442: ③円ツール(B4) — 半径入力ダイアログを廃止。中心クリックと同時に、
+  // 作図エリア(PDFページ寸法)の縦横長い方の10%を半径として即時作図する。
+  // 半径の微調整はグリップ(円周上0°方向)をドラッグして行う(従来通り)。
+  function placeCircleDefault(centerLx, centerLy) {
     const pdfEl = document.getElementById('pdf-cv');
-    const baseLen = (pdfEl && pdfEl.width) ? Math.max(pdfEl.width, pdfEl.height) : 2000;
-    const r = baseLen * 0.1;
+    const longSide = (pdfEl && pdfEl.width) ? Math.max(pdfEl.width, pdfEl.height) : 1000;
+    const r = longSide * 0.1;
     pushPmUndo();
     steps[currentStep].push({
       uuid: uid(), type:'circle', name: annName('circle'),
@@ -1603,7 +1722,7 @@
       if (ann.type==='arrow' || ann.type==='line') {
         const pScale = getPaperScale();
         const lwArr = ann.type==='line' ? LINE_LW : ARROW_LW;
-        const lw    = lwArr[(ann.sizeStep||1)-1] * pScale;
+        const lw    = lwArr[ann.sizeStep??1] * pScale; // v0.0055: 呼称0対応でindex化方式変更(旧: sizeStep||1)-1)
         const lwSc  = lw * zoom;
         const grip  = Math.max(lwSc / 2 + 10, 14);
         const sx = ann.x1*zoom, sy = ann.y1*zoom;
@@ -1613,7 +1732,7 @@
         if (distToSeg(cssx,cssy,sx,sy,tx,ty) < lwSc / 2 + 6)  return {uuid:ann.uuid,part:'body'};
       }
       if (ann.type==='circle') {
-        const lw   = LINE_LW[(ann.sizeStep||1)-1] * getPaperScale();
+        const lw   = LINE_LW[ann.sizeStep??1] * getPaperScale(); // v0.0055: 呼称0対応でindex化方式変更
         const lwSc = lw * zoom;
         const grip = Math.max(lwSc / 2 + 10, 14);
         const cxs = ann.cx*zoom, cys = ann.cy*zoom, rS = (ann.r||0)*zoom;
@@ -1654,7 +1773,7 @@
       }
       if (ann.type==='text') {
         const pScale   = getPaperScale();
-        const fs       = TEXT_FS[(ann.sizeStep||1)-1] * pScale;
+        const fs       = TEXT_FS[ann.sizeStep ?? 1] * pScale; // v0.0047: 呼称0対応でindex化方式変更
         const rotation = ann.rotation || 0;
         const tw_css   = ann._twPx ? ann._twPx * zoom
                                    : ann.text.length * fs * zoom;
@@ -1705,7 +1824,7 @@
 
     // 色・サイズの初期値は編集中ならその値、新規なら前回使用値(記憶済み)
     let curColor = editAnn ? (editAnn.color || defTextColor) : defTextColor;
-    let curSize  = editAnn ? (editAnn.sizeStep || defTextStep) : defTextStep;
+    let curSize  = editAnn ? (editAnn.sizeStep ?? defTextStep) : defTextStep; // v0.0047: 0が偽値化けするバグ修正
     const TEXT_COLORS = COLORS; // ['#ff4081','#e8a020','#188C1C','#1B3EAB','#aaaaaa','#ff8c00','#111111']
 
     const wrap = document.createElement('div');
@@ -1722,10 +1841,15 @@
         <input id="pm-text-val" type="text" placeholder="テキストを入力..."
           style="background:#2a2a3a;border:1px solid ${borderColor}55;color:#eee;border-radius:4px;
                  padding:5px 9px;font-size:.84em;width:190px;outline:none;box-sizing:border-box;">
+        <button id="pm-text-stamp-tgl" title="定型文"
+          style="padding:5px 8px;background:#2a2a3a;border:1px solid ${borderColor};color:${borderColor};
+                 border-radius:4px;cursor:pointer;font-size:.75em;">▼</button>
         <button id="pm-text-ok"
           style="padding:5px 12px;background:${borderColor};border:none;color:#000;
                  border-radius:4px;cursor:pointer;font-weight:700;font-size:.82em;">✓</button>
       </div>
+      <div id="pm-text-stamp-panel" style="display:none;overflow-y:auto;
+        background:rgba(0,0,0,.25);border:1px solid #333;border-radius:5px;padding:6px 7px;"></div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div id="pm-text-colors" style="display:flex;gap:4px;">
           ${TEXT_COLORS.map(c => `<button class="pm-text-color-btn" data-color="${c}"
@@ -1745,6 +1869,95 @@
       </div>`;
     document.body.appendChild(wrap);
 
+    // v0.0057: 定型文スタンプ機能。▼ボタンでテキスト候補を五十音行ごとに一覧表示し、クリックで入力欄に追記する
+    // v0.0058: マスター指定の新リスト(ボタン変更.txt)に全面差し替え。旧リストとの主な変更点：
+    // ・矢板をあ行→や行へ移動 / FL・感電注意を削除 / 既存構造物・既存利用→「既存」に統合
+    // ・工事車両進入路→「工事車両」、コンクリート打設範囲→「打設範囲」(た行へ移動)、
+    //   第三者立入禁止→「第三者」(立入禁止は既存のまま別枠で維持)、吊荷下立入禁止→「吊荷」に短縮
+    // ・GLをか行→さ行へ移動
+    const STAMP_GROUPS = [
+      ['あ', ['アウトリガー張出','アスファルト','足場組立範囲','足元注意','安全設備','安全通路',
+               'AS','AP','SMW','親綱']],
+      ['か', ['開口部注意','概算数量','火気厳禁','火気使用','仮設トイレ','仮置き','仮囲い',
+               '基礎','基層','基準点','既存','休憩所','切梁','躯体','掘削範囲','クレーン作業',
+               'ゲート','現場事務所','工事車両','高所作業','Con','コンクリート']],
+      ['さ', ['砕石','作業エリア','作業時間','作業半径','参考図','残工事','残土置場','資機材置場',
+               '資材置場','車両ルート','GL','重機作業中','消火器','消火設備','捨てコン','頭上注意',
+               '施工範囲','設置範囲','旋回範囲','先行工事','洗車場','測点']],
+      ['た', ['待機場所','第三者','打設範囲','立入禁止','玉掛作業','断面図','丁張','墜落注意',
+               '吊荷','TP','手摺','転落注意','床付け','土砂仮置場']],
+      ['な', ['法肩','法面']],
+      ['は', ['排水処理','搬出経路','搬入経路','BM','飛来落下注意','表層','分電盤','平面図',
+               '別途','別途工事','保安設備','歩行者通路']],
+      ['ま', ['埋設物','水替え','見積範囲','見積範囲外']],
+      ['や', ['ヤード','矢板','山留','誘導員配置','要確認','要協議']],
+      ['ら', ['立面図','レベルコン','路床','路盤']],
+    ];
+    const stampPanel = document.getElementById('pm-text-stamp-panel');
+    const stampTgl    = document.getElementById('pm-text-stamp-tgl');
+    let stampBuilt = false;
+    function buildStampPanel() {
+      if (stampBuilt) return;
+      stampBuilt = true;
+      stampPanel.innerHTML = STAMP_GROUPS.map(([label, words]) => `
+        <div style="display:flex;align-items:flex-start;gap:5px;margin-bottom:4px;">
+          <span style="flex-shrink:0;width:2.2em;padding-top:4px;font-size:.66em;color:#888;text-align:right;">${label}</span>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;">
+            ${words.map(w => `<button class="pm-stamp-btn" data-w="${w}"
+              style="padding:3px 8px;background:#2a2a3a;border:1px solid #444;color:#cacaca;
+                     border-radius:4px;font-size:.72em;cursor:pointer;white-space:nowrap;">${w}</button>`).join('')}
+          </div>
+        </div>`).join('');
+      stampPanel.querySelectorAll('.pm-stamp-btn').forEach(btn => {
+        btn.onclick = (ev) => {
+          ev.stopPropagation();
+          const w = btn.dataset.w;
+          inp.value = inp.value ? (inp.value + ' ' + w) : w;
+          // v0.0057: 1個選んだら自動的にパネルを閉じる(▲→▼)
+          stampPanel.style.display = 'none';
+          stampTgl.textContent = '▼';
+          inp.focus();
+        };
+      });
+    }
+    stampTgl.onclick = (ev) => {
+      ev.stopPropagation();
+      buildStampPanel();
+      const show = stampPanel.style.display === 'none';
+      if (show) {
+        // v0.0057: 開いた時だけ画面内に収まる範囲で横幅を広げる(ページ全体はスクロールさせない)。
+        // 縦方向は残りの表示可能高さに収め、それでも入りきらない場合だけパネル内部をoverflow-y:autoでスクロール
+        const margin = 10;
+        const wr = wrap.getBoundingClientRect();
+        const availW = window.innerWidth  - margin*2;
+        const availH = window.innerHeight - wr.top - margin;
+        stampPanel.style.width    = Math.min(640, availW) + 'px';
+        stampPanel.style.maxWidth = availW + 'px';
+        stampPanel.style.maxHeight= Math.max(80, availH) + 'px';
+        stampPanel.style.display  = 'block';
+      } else {
+        stampPanel.style.display  = 'none';
+      }
+      stampTgl.textContent = show ? '▲' : '▼';
+      if (show) {
+        // v0.0056: 開いた後、ダイアログ全体が画面外にはみ出さないよう位置を補正(スクロール発生防止)
+        requestAnimationFrame(() => {
+          const r = wrap.getBoundingClientRect();
+          const margin = 8;
+          let dx = 0, dy = 0;
+          if (r.right  > window.innerWidth  - margin) dx = (window.innerWidth  - margin) - r.right;
+          if (r.bottom > window.innerHeight - margin) dy = (window.innerHeight - margin) - r.bottom;
+          if (r.left + dx < margin) dx = margin - r.left;
+          if (r.top  + dy < margin) dy = margin - r.top;
+          if (dx || dy) {
+            wrap.style.left = (parseFloat(wrap.style.left) + dx) + 'px';
+            wrap.style.top  = (parseFloat(wrap.style.top)  + dy) + 'px';
+          }
+        });
+      }
+      inp.focus();
+    };
+
     const inp = document.getElementById('pm-text-val');
     if (editAnn) inp.value = editAnn.text;
     setTimeout(() => { inp.focus(); inp.select(); }, 30);
@@ -1760,7 +1973,7 @@
     });
     document.getElementById('pm-text-size-dn').onclick = (ev) => {
       ev.stopPropagation();
-      curSize = Math.max(1, curSize - 1);
+      curSize = Math.max(0, curSize - 1); // v0.0047: 呼称0を追加
       document.getElementById('pm-text-size-lbl').textContent = curSize;
       inp.focus();
     };
@@ -1771,8 +1984,15 @@
       inp.focus();
     };
 
+    function outside(ev) {
+      if (!wrap.contains(ev.target)) { cleanup(); }
+    }
+    function cleanup() {
+      wrap.remove();
+      document.removeEventListener('pointerdown', outside);
+    }
     function confirm() {
-      const txt=inp.value.trim(); wrap.remove();
+      const txt=inp.value.trim(); cleanup();
       if (!txt) return;
       pushPmUndo();
       if (editAnn) {
@@ -1793,11 +2013,10 @@
     document.getElementById('pm-text-ok').onclick     = confirm;
     inp.addEventListener('keydown', ev => {
       if (ev.key==='Enter')  { ev.stopPropagation(); confirm(); }
-      if (ev.key==='Escape') { ev.stopPropagation(); wrap.remove(); }
+      if (ev.key==='Escape') { ev.stopPropagation(); cleanup(); }
     }, {capture:true});
     setTimeout(() => {
-      function outside(ev) { if (!wrap.contains(ev.target)) { wrap.remove(); document.removeEventListener('mousedown',outside); } }
-      document.addEventListener('mousedown', outside);
+      document.addEventListener('pointerdown', outside);
     }, 150);
   }
 
@@ -1861,20 +2080,6 @@
           });
         }
         if (selAnn && selAnn.type==='circle') {
-          // v0.0417: 円選択時、中心にクロスマークを表示(選択時のみ)
-          const {zoom:gzCross}=getState();
-          const crossLen = 8 / Math.max(gzCross, 0.005);
-          const crossLw  = 2 / Math.max(gzCross, 0.005);
-          const cCross = l2c(selAnn.cx, selAnn.cy);
-          pmCtx.save();
-          pmCtx.beginPath();
-          pmCtx.moveTo(cCross.cx-crossLen, cCross.cy); pmCtx.lineTo(cCross.cx+crossLen, cCross.cy);
-          pmCtx.moveTo(cCross.cx, cCross.cy-crossLen); pmCtx.lineTo(cCross.cx, cCross.cy+crossLen);
-          pmCtx.strokeStyle = 'rgba(0,0,0,.8)'; pmCtx.lineWidth = crossLw + (2/Math.max(gzCross,0.005));
-          pmCtx.stroke();
-          pmCtx.strokeStyle = '#fff'; pmCtx.lineWidth = crossLw;
-          pmCtx.stroke();
-          pmCtx.restore();
           // v0.0410: 円選択時、半径グリップと現在の半径(m)を表示
           const c = l2c(selAnn.cx, selAnn.cy);
           const {zoom:gz}=getState();
@@ -1932,8 +2137,9 @@
 
     if (annotMode==='arrow'&&arrowStart&&previewPos) {
       const s=l2c(arrowStart.lx,arrowStart.ly), t=l2c(previewPos.lx,previewPos.ly);
-      const lw = ARROW_LW[defArrowStep-1] * getPaperScale();
-      // v0.0048: プレビューが実際の太さと違う(0.7倍で細く見えていた)バグを修正。等倍に統一。
+      // v0.0442: ②defArrowStepはv0.0055でsizeStepと同じ直接index方式に統一済みなのに、
+      // ここだけ旧来の-1(1始まり)換算＋太さ0.7倍のままだったため、実際の矢印より細く見えていた不具合を修正
+      const lw = ARROW_LW[defArrowStep] * getPaperScale();
       drawArrowRaw(s.cx,s.cy,t.cx,t.cy,'rgba(255,64,129,.5)',lw,true,lw);
     }
     if (annotMode==='arrow'&&arrowStart) {
@@ -1945,8 +2151,8 @@
 
     if (annotMode==='line'&&lineStart&&previewPos) {
       const s=l2c(lineStart.lx,lineStart.ly), t=l2c(previewPos.lx,previewPos.ly);
-      const lw = LINE_LW[defLineStep-1] * getPaperScale();
-      // v0.0048: プレビューが実際の太さと違う(0.7倍で細く見えていた)バグを修正。等倍に統一。
+      // v0.0442: ②同上(defLineStep版)。実際の線の太さに合わせる
+      const lw = LINE_LW[defLineStep] * getPaperScale();
       pmCtx.save();
       pmCtx.strokeStyle='rgba(17,17,17,.5)'; pmCtx.lineWidth=lw; pmCtx.lineCap='round';
       pmCtx.setLineDash([6,4]);
@@ -2518,7 +2724,7 @@
     const vis = ann.visibility || 'visible';
     if (vis === 'hidden') return;
     const s=l2c(ann.x1,ann.y1), t=l2c(ann.x2,ann.y2);
-    const lw    = ARROW_LW[(ann.sizeStep||1)-1] * getPaperScale();
+    const lw    = ARROW_LW[ann.sizeStep??1] * getPaperScale(); // v0.0055: 呼称0対応でindex化方式変更
     const color = ann.color||'#ff4081';
     const dir   = ann.arrowDir || 'fwd'; // fwd=終点のみ矢じり(既定) / rev=始点のみ / both=両端
     pmCtx.save();
@@ -2541,7 +2747,7 @@
     const vis = ann.visibility || 'visible';
     if (vis === 'hidden') return;
     const s=l2c(ann.x1,ann.y1), t=l2c(ann.x2,ann.y2);
-    const lw    = LINE_LW[(ann.sizeStep||1)-1] * getPaperScale();
+    const lw    = LINE_LW[ann.sizeStep??1] * getPaperScale(); // v0.0055: 呼称0対応でindex化方式変更
     const color = ann.color||'#111111';
     // v0.0025: 点線種はダブルクリックで切替(solid/dashA/dashB/dashC=一点鎖線)。
     // 左UIの表示ボタンは他タイプと共通のvisible/translucent/hiddenに戻した
@@ -2571,7 +2777,7 @@
     const vis = ann.visibility || 'visible';
     if (vis === 'hidden') return;
     const c  = l2c(ann.cx, ann.cy);
-    const lw = LINE_LW[(ann.sizeStep||1)-1] * getPaperScale();
+    const lw = LINE_LW[ann.sizeStep??1] * getPaperScale(); // v0.0055: 呼称0対応でindex化方式変更
     const color = ann.color || '#111111';
     const lineStyle = ann.lineStyle || 'solid';
     pmCtx.save();
@@ -2622,7 +2828,7 @@
   function drawText(ann, selected, isHover) {
     const vis = ann.visibility || 'edge-primary';
     const pScale = getPaperScale();
-    const fs = TEXT_FS[(ann.sizeStep||1)-1] * pScale;
+    const fs = TEXT_FS[ann.sizeStep ?? 1] * pScale; // v0.0047: 呼称0対応でindex化方式変更
     pmCtx.font = `bold ${fs}px "Segoe UI","Yu Gothic",sans-serif`;
     const tw = pmCtx.measureText(ann.text||'').width;
     ann._twPx = tw;
@@ -2635,25 +2841,21 @@
     const {cx, cy} = l2c(ann.lx + tw/2, ann.ly);
     const rotation  = ann.rotation || 0;
     const {zoom:tz} = getState();
-    // v0.0048: マスター要望で「縁/無/逆/非表示」の4状態に変更。
-    // edge-frame(縁)=白地に黒文字 / edge-primary(無)=現状維持(背景無し・自動配色の縁取りのみ)
-    // edge-reverse(逆)=黒地に白文字+文字自体にも縁取り / hidden=非表示
-    // (旧データのedge-secondaryは廃止のためedge-primary相当として扱う)
-    const isFrame   = (vis === 'edge-frame');
-    const isReverse = (vis === 'edge-reverse');
-    const textColor = isFrame ? '#111111' : isReverse ? '#ffffff' : (ann.color || '#ffffff');
+    const textColor = ann.color || '#ffffff';
     const isBlack = (textColor === '#111111' || textColor === '#000000');
+    const mojiWaku = ann.mojiWaku || 0; // v0.0047: 0=通常 1=エッジ非表示 2=エッジ色反転
     let outlineColor;
-    if (isFrame) {
-      outlineColor = null; // 白地に黒文字は背景で十分なコントラストがあるため縁取り無し
-    } else if (isReverse) {
-      outlineColor = 'rgba(0,0,0,.9)'; // 逆: 黒地に白文字＋文字自体に縁取りを付けて強調
-    } else {
+    if (vis === 'edge-secondary') {
+      outlineColor = 'rgba(128,128,128,.9)'; 
+    } else if (mojiWaku === 2) {
+      // 通常とは白黒を入れ替える
+      outlineColor = isBlack ? 'rgba(0,0,0,.9)' : 'rgba(255,255,255,.9)';
+    } else { 
       outlineColor = isBlack ? 'rgba(255,255,255,.9)' : 'rgba(0,0,0,.9)';
     }
 
     pmCtx.save();
-    if (vis === 'edge-secondary') pmCtx.globalAlpha = 0.5; // v0.0048: 種別表示(一括切替)の「半透明」用に維持
+    if (vis === 'edge-secondary') pmCtx.globalAlpha = 0.5; 
 
     pmCtx.save();
     pmCtx.translate(cx, cy);
@@ -2666,20 +2868,12 @@
     pmCtx.font          = `bold ${fs}px "Segoe UI","Yu Gothic",sans-serif`;
     pmCtx.textBaseline  = 'middle';
     pmCtx.textAlign     = 'left';
-
-    // v0.0048: 縁(白地)・逆(黒地)は文字の背景に矩形を敷く
-    if (isFrame || isReverse) {
-      const padX = fs * 0.28, padY = fs * 0.22;
-      pmCtx.fillStyle = isFrame ? '#ffffff' : '#111111';
-      pmCtx.fillRect(-tw/2 - padX, -fs*0.5 - padY, tw + padX*2, fs + padY*2);
-    }
-
-    pmCtx.lineWidth     = fs * 0.08;
-    if (outlineColor) {
+    pmCtx.fillStyle     = textColor;
+    if (mojiWaku !== 1) { // v0.0047: 1のときエッジライン(縁取り)を描かない
+      pmCtx.lineWidth   = fs * 0.08;
       pmCtx.strokeStyle = outlineColor;
       pmCtx.strokeText(ann.text, -tw/2, 0);
     }
-    pmCtx.fillStyle     = textColor;
     pmCtx.fillText(ann.text, -tw/2, 0);
 
     if (selected || isHover) {
@@ -2973,9 +3167,9 @@
     function cleanup() {
       ov.remove(); rb.remove(); magPanel.remove();
       ov.removeEventListener('wheel', onWheel);
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
       document.removeEventListener('keydown', onKey, true);
     }
     function onKey(e) {
@@ -3026,9 +3220,9 @@
         pmDoExportPDF(selectedSteps, mnX, mnY, mxX, mxY);
       }, null);
     }
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
   }
 
   async function pmDoExportPDF(selectedSteps, mnX, mnY, mxX, mxY) {
@@ -3069,12 +3263,8 @@
         const cctx   = comp.getContext('2d');
         cctx.fillStyle = '#ffffff';
         cctx.fillRect(0, 0, cW, cH);
-        // v0.0048: AreCal本体側の「PDFをグレースケール表示」設定を、PDF図面レイヤーのみに反映
-        const _gsOn = (typeof window._isGrayscaleOn === 'function') && window._isGrayscaleOn();
-        if (_gsOn) cctx.filter = 'grayscale(1)';
         if (pdfCvEl && pdfCvEl.width>0)
           cctx.drawImage(pdfCvEl,  mnX-cpad, mnY-cpad, cW, cH, 0, 0, cW, cH);
-        cctx.filter = 'none';
         cctx.drawImage(drawCvEl, mnX,      mnY,      cW, cH, 0, 0, cW, cH);
         // v0.0411: 17) pmCvはdraw-cvと同じ座標系(cpad込み)になったため、drawCvElと同じmnX,mnYでサンプリング
         cctx.drawImage(pmCv,     mnX,      mnY,      cW, cH, 0, 0, cW, cH);
@@ -3089,8 +3279,7 @@
       }
 
       const ts = typeof getTs==='function' ? getTs() : new Date().toISOString().slice(0,16).replace('T','_');
-      // v0.0048: マスター要望でファイル名プレフィックスを「placement_」→「Arecal_」に変更
-      doc.save(`Arecal_${ts.replace(/[: ]/g,'')}.pdf`);
+      doc.save(`Arecal_${ts.replace(/[: ]/g,'')}.pdf`); // v0.0442: ④ファイル名プレフィックスをplacement_→Arecal_に変更
       _toast(`✅ PDF出力完了（${selectedSteps.length}ページ）`);
 
     } catch(err) {
@@ -3182,12 +3371,11 @@
       }
       const vis   = ann.visibility || (ann.type==='text' ? 'edge-primary' : 'visible');
       const col   = ann.color||(ann.type==='text'?'#ffffff':'#ff4081');
-      const step  = ann.sizeStep||1;
+      const step  = ann.sizeStep ?? 1; // v0.0047: 0が偽値化けするバグ修正
       let visIcon, visCol;
       if (ann.type === 'text') {
-        // v0.0048: 縁(edge-frame)/無(edge-primary)/逆(edge-reverse)/非表示(hidden) の4状態
-        visIcon = vis==='hidden' ? '✕' : vis==='edge-frame' ? '縁' : vis==='edge-reverse' ? '逆' : 'A';
-        visCol  = vis==='hidden' ? '#f55' : vis==='edge-frame' ? '#eee' : vis==='edge-reverse' ? '#aaa' : '#4c4';
+        visIcon = vis==='hidden' ? '✕' : vis==='edge-secondary' ? 'A̲' : 'A';
+        visCol  = vis==='hidden' ? '#f55' : vis==='edge-secondary' ? '#e8a020' : '#4c4';
       } else {
         visIcon = vis==='hidden' ? '✕' : vis==='translucent' ? '◑' : '●';
         visCol  = vis==='hidden' ? '#f55' : vis==='translucent' ? '#e8a020' : '#4c4';
@@ -3197,7 +3385,7 @@
           <button class="pm-vis-btn" data-uuid="${ann.uuid}"
             style="flex-shrink:0;background:none;border:none;cursor:pointer;
                    font-size:.8em;padding:0 2px;color:${visCol};"
-            title="${ann.type==='text'?'縁(白地黒文字) → 無(現状) → 逆(黒地白文字)':'表示 → 半透明 → 非表示'}">${visIcon}</button>
+            title="${ann.type==='text'?'エッジ切替 → 非表示':'表示 → 半透明 → 非表示'}">${visIcon}</button>
           <span class="pm-color-dot" data-uuid="${ann.uuid}"
             style="width:11px;height:11px;border-radius:50%;flex-shrink:0;cursor:pointer;
                    background:${col};border:1px solid rgba(255,255,255,.3);
@@ -3215,7 +3403,19 @@
             <button class="pm-step-up" data-uuid="${ann.uuid}"
               style="width:16px;height:16px;font-size:.65em;padding:0;border-radius:2px;
                 background:rgba(255,255,255,.06);border:1px solid #444;color:#CACACA;cursor:pointer;">▶</button>
-          </span>
+          </span>${ann.type==='text' ? (() => {
+            // v0.0047: MojiWaku(文字枠) 0=通常 1=エッジ非表示 2=エッジ色反転 の3状態を循環
+            const mw = ann.mojiWaku || 0;
+            const mwIcon  = mw===0 ? '縁' : mw===1 ? '無' : '逆';
+            const mwCol   = mw===0 ? '#4c4' : mw===1 ? '#888' : '#e8a020';
+            const mwTitle = mw===0 ? '文字枠：通常（次で非表示）'
+                           : mw===1 ? '文字枠：非表示（次で色反転）'
+                           : '文字枠：色反転（次で通常）';
+            return `<button class="pm-mojiwaku-btn" data-uuid="${ann.uuid}"
+              style="width:16px;height:16px;font-size:.62em;padding:0;border-radius:2px;flex-shrink:0;
+                background:rgba(255,255,255,.06);border:1px solid #444;color:${mwCol};cursor:pointer;"
+              title="${mwTitle}">${mwIcon}</button>`;
+          })() : ''}
           <button class="pm-del-btn" data-uuid="${ann.uuid}"
             style="background:rgba(200,80,80,.15);border:1px solid #c04040;border-radius:3px;
                    color:#f88;cursor:pointer;padding:1px 5px;font-size:.72em;flex-shrink:0;">✕</button>
@@ -3255,7 +3455,7 @@
 
     list.querySelectorAll('li[data-uuid]').forEach(li => {
       li.addEventListener('click', ev => {
-        if (['pm-del-btn','pm-color-dot','pm-color-none','pm-step-dn','pm-step-up','pm-mach-sz']
+        if (['pm-del-btn','pm-color-dot','pm-color-none','pm-step-dn','pm-step-up','pm-mach-sz','pm-mojiwaku-btn']
             .some(c=>ev.target.classList.contains(c))) return;
         const uuid = li.dataset.uuid;
         if (ev.shiftKey) {
@@ -3274,9 +3474,7 @@
         if (!a) return;
         pushPmUndo();
         if (a.type === 'text') {
-          // v0.0048→修正: マスター確認の結果、個別の非表示は不要(種別表示の一括非表示に任せる)。
-          // 「縁/無/逆」の3状態サイクルに変更。
-          const cycle = ['edge-frame','edge-primary','edge-reverse'];
+          const cycle = ['edge-primary','edge-secondary','hidden'];
           const cur   = a.visibility || 'edge-primary';
           a.visibility = cycle[(cycle.indexOf(cur) + 1) % cycle.length];
         } else {
@@ -3317,13 +3515,23 @@
     list.querySelectorAll('.pm-step-dn').forEach(btn => {
       btn.onclick=ev=>{ev.stopPropagation();
         const a=steps[currentStep].find(x=>x.uuid===btn.dataset.uuid);
-        if(a){a.sizeStep=Math.max(1,(a.sizeStep||1)-1);updatePlacedList();}
+        if(a){
+          // v0.0055: 線・矢印・円もテキストと同様に呼称0まで下げられるように統一。||1由来の0化けバグも??1へ修正
+          const min=0;
+          a.sizeStep=Math.max(min,(a.sizeStep??1)-1);updatePlacedList();
+        }
       };
     });
     list.querySelectorAll('.pm-step-up').forEach(btn => {
       btn.onclick=ev=>{ev.stopPropagation();
         const a=steps[currentStep].find(x=>x.uuid===btn.dataset.uuid);
-        if(a){const max=(a.type==='line'||a.type==='circle')?7:5; a.sizeStep=Math.min(max,(a.sizeStep||1)+1);updatePlacedList();}
+        if(a){const max=(a.type==='line'||a.type==='circle')?7:5; a.sizeStep=Math.min(max,(a.sizeStep??1)+1);updatePlacedList();}
+      };
+    });
+    list.querySelectorAll('.pm-mojiwaku-btn').forEach(btn => {
+      btn.onclick=ev=>{ev.stopPropagation();
+        const a=steps[currentStep].find(x=>x.uuid===btn.dataset.uuid);
+        if(a){pushPmUndo();a.mojiWaku=((a.mojiWaku||0)+1)%3;updatePlacedList();}
       };
     });
     list.querySelectorAll('.pm-del-btn').forEach(btn => {
@@ -3470,13 +3678,13 @@
     inp.onchange = () => {
       const file = inp.files[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = ev => {
+      (async () => {
         try {
-          const text = ev.target.result;
-          const m = text.match(/const\s+MACHINERY_DATA\s*=\s*(\{[\s\S]*\});?\s*$/);
-          if (!m) { _toast('⚠ MACHINERY_DATA が見つかりません'); return; }
-          machineryData = _migrateMachineryCategories(JSON.parse(m[1]));
+          const buf  = await file.arrayBuffer();
+          const text = await _decodeMachineryBytes(buf); // v0.0053: GZIP圧縮版にも対応
+          const objText = _extractMachineryObjectText(text); // v0.0054: 正規表現からindexOf方式に変更
+          if (!objText) { _toast('⚠ MACHINERY_DATA が見つかりません'); return; }
+          machineryData = _migrateMachineryCategories(JSON.parse(objText));
           const count = _pmAnnounceMachineryStatus();
           _toast(`📦 読込完了（${count}件）`, 2500);
           if (placementMode) renderPmLayer(); // 保険的対応：既に☒表示のオブジェクトがあればその場で復帰
@@ -3485,8 +3693,7 @@
           _toast('⚠ 読み込みエラー（形式確認してください）');
           console.error('[Arecalay] loadMachineryFile:', err);
         }
-      };
-      reader.readAsText(file, 'UTF-8');
+      })();
     };
     inp.click();
   }
@@ -3508,11 +3715,14 @@
       }
     });
     return {
-      version:      '1.1',
+      version:      '1.2', // v0.0058: scaleDenom記録に伴いバージョン更新
       appId:        'arecalay-placement',
       annCounter,
       steps,
-      machineryMeta
+      machineryMeta,
+      // v0.0058: 保存時点のAreCal本体スケール(scaleDenom)を記録。読込時に現在のAreCal本体スケールと
+      // 比較し、不一致(=配置座標がずれる可能性がある組み合わせ)であればユーザーに警告する用途。
+      scaleDenom:   (typeof scaleDenom !== 'undefined' && scaleDenom > 0) ? scaleDenom : null
     };
   }
   function pmSaveJSON() {
@@ -3539,6 +3749,18 @@
     }
     if (data.appId && data.appId !== 'arecalay-placement') {
       _toast('⚠ このファイルは Arecalay 用ではありません'); return false;
+    }
+    // v0.0058: 保存時のAreCal本体スケール(data.scaleDenom)と、現在アクティブなAreCal本体スケール
+    // (scaleDenom、AreCal側のapplyArecDataがこの直前に実行され復元済みの値)を比較。
+    // 配置座標そのものは自動補正せず(座標系の解釈を誤って別の不整合を生むリスクを避けるため)、
+    // 不一致の場合はユーザーに警告するに留める。
+    if (typeof data.scaleDenom === 'number' && data.scaleDenom > 0 &&
+        typeof scaleDenom !== 'undefined' && scaleDenom > 0) {
+      const ratio = data.scaleDenom / scaleDenom;
+      if (Math.abs(ratio - 1) > 0.001) {
+        _toast(`⚠ 配置データの保存時スケール(1/${Math.round(data.scaleDenom)})が現在のAreCal本体スケール` +
+               `(1/${Math.round(scaleDenom)})と一致していません。配置位置がずれている可能性があります`, 6000);
+      }
     }
     pushPmUndo();
     if (!placementMode && typeof window._pmToggle === 'function') {
