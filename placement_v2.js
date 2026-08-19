@@ -21,6 +21,11 @@
  * placement.js — AreCal 配置モード拡張 v0.9.35
  *
  * [最新の変更]
+ * v0.0061:
+ *   - ①マスターより再訂正：「枠」という言い換えではなく、左パネルの小さいトグルボタン自体の
+ *     見た目(背景色/文字色)で状態を示してほしいとのこと。「縁」＝白地に黒文字のボタン、
+ *     「無」＝現状のまま、「逆」＝ラベルは同じ「縁」だが黒地に白文字のボタン(色が反転している
+ *     ことで区別)に変更。キャンバス上のテキスト描画方式(縁取りストローク)自体は変更していない。
  * v0.0060:
  *   - ①マスターより訂正：直すのは描画ロジックではなく左パネルの小さいトグルボタンの表記のみ。
  *     「縁」の字が「緑」に見えるうえボタン色も緑(#4c4)のため、「なぜ緑色にならないのか」と
@@ -268,7 +273,7 @@
 (function () {
   'use strict';
 
-  const ARECALAY_VER = '0.0060'; // v0.0442(HTML)/0.0060(js): ①ボタン表記「縁」→「枠」に修正
+  const ARECALAY_VER = '0.0061'; // v0.0444(HTML)/0.0061(js): ①ボタン見た目(白地黒文字/黒地白文字)に再修正
   window._pmVersion = ARECALAY_VER;
   const COLORS      = ['#ff4081','#e8a020','#188C1C','#1B3EAB','#aaaaaa','#ff8c00','#111111'];
   const PM_UNDO_MAX = 30;
@@ -3410,17 +3415,22 @@
                 background:rgba(255,255,255,.06);border:1px solid #444;color:#CACACA;cursor:pointer;">▶</button>
           </span>${ann.type==='text' ? (() => {
             // v0.0047: MojiWaku(文字枠) 0=通常 1=エッジ非表示 2=エッジ色反転 の3状態を循環
-            // v0.0442: ①「縁」の字が「緑」に見え、ボタン色も緑(#4c4)なため「なぜ緑色にならないのか」と
-            // 誤解されるとの指摘。描画ロジック・配色は変更せず、紛らわしい文字だけ「枠」に変更して明確化。
+            // v0.0445: ①マスターより再訂正。「枠」という文字への言い換えではなく、ボタン自体の見た目
+            // (背景色/文字色)で状態を示してほしいとのこと。「縁」＝白地に黒文字ボタン、
+            // 「無」＝現状のまま、「逆」＝ラベルは同じ「縁」だが黒地に白文字ボタン(色が反転している
+            // ことで「逆」だとひと目で分かる)。キャンバス上のテキスト描画方式(縁取りストローク)自体は
+            // 引き続き変更していない。
             const mw = ann.mojiWaku || 0;
-            const mwIcon  = mw===0 ? '枠' : mw===1 ? '無' : '逆';
-            const mwCol   = mw===0 ? '#4c4' : mw===1 ? '#888' : '#e8a020';
+            const mwIcon  = mw===1 ? '無' : '縁'; // 0と2は同じラベル「縁」、色の反転だけで区別
+            const mwBg    = mw===0 ? '#fff' : mw===1 ? 'rgba(255,255,255,.06)' : '#000';
+            const mwCol   = mw===0 ? '#000' : mw===1 ? '#888' : '#fff';
+            const mwBorder= mw===1 ? '#444' : '#888';
             const mwTitle = mw===0 ? '文字枠：通常（次で非表示）'
                            : mw===1 ? '文字枠：非表示（次で色反転）'
                            : '文字枠：色反転（次で通常）';
             return `<button class="pm-mojiwaku-btn" data-uuid="${ann.uuid}"
               style="width:16px;height:16px;font-size:.62em;padding:0;border-radius:2px;flex-shrink:0;
-                background:rgba(255,255,255,.06);border:1px solid #444;color:${mwCol};cursor:pointer;"
+                background:${mwBg};border:1px solid ${mwBorder};color:${mwCol};cursor:pointer;"
               title="${mwTitle}">${mwIcon}</button>`;
           })() : ''}
           <button class="pm-del-btn" data-uuid="${ann.uuid}"
