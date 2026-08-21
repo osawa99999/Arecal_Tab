@@ -21,6 +21,13 @@
  * placement.js — AreCal 配置モード拡張 v0.9.35
  *
  * [最新の変更]
+ * v0.0063:
+ *   - ③マスターより要望。配置オブジェクトリスト(#pm-placed-list)のドラッグ&ドロップ時、
+ *     以前は「ドラッグ中のli全体を緑枠で囲むだけ」で上に入るか下に入るか分かりにくかったため、
+ *     カーソル位置(行の上半分/下半分)に応じて挿入線(上端/下端)を表示する方式に変更。
+ *     AreCal本体側(#sh-list)の同様の改修と統一。あわせて、外部ライブラリを使わない簡易FLIP
+ *     アニメーション(旧位置→新位置の差分をtransformで巻き戻してから0に戻す)を追加し、
+ *     並び替え後の移動が滑らかに見えるようにした。
  * v0.0062:
  *   - ①マスターの好みで白黒の割り当てを入れ替え。「縁」＝黒地に白文字、「逆(ラベルは同じ縁)」＝
  *     白地に黒文字のボタンに変更(v0.0061の逆)。
@@ -276,7 +283,7 @@
 (function () {
   'use strict';
 
-  const ARECALAY_VER = '0.0062'; // v0.0444(HTML)/0.0062(js): ①白黒を入れ替え(縁=黒地白文字/逆=白地黒文字)
+  const ARECALAY_VER = '0.0063'; // v0.0453(HTML)/0.0063(js): ③ドラッグ挿入線+簡易FLIPアニメーション
   window._pmVersion = ARECALAY_VER;
   const COLORS      = ['#ff4081','#e8a020','#188C1C','#1B3EAB','#aaaaaa','#ff8c00','#111111'];
   const PM_UNDO_MAX = 30;
@@ -3316,6 +3323,11 @@
   function updatePlacedList() {
     const list=document.getElementById('pm-placed-list');
     if (!list) return;
+    // v0.0453: ③簡易FLIPアニメーション用に、再構築前の各liの位置をuuidで記録
+    const _pmOldListRects = new Map();
+    list.querySelectorAll('li[data-uuid]').forEach(li => {
+      _pmOldListRects.set(li.dataset.uuid, li.getBoundingClientRect());
+    });
     const copyArea = document.getElementById('pm-copy-area');
     const selCnt   = document.getElementById('pm-sel-count');
     if (copyArea) copyArea.style.display = selectedUuids.size > 0 ? 'block' : 'none';
@@ -3444,33 +3456,65 @@
     }).join('');
 
     let _dragSrcDisplayIdx = null;
+    // v0.0453: ③以前は「ドラッグ中のli全体を緑枠で囲む」だけで、上に入るか下に入るか
+    // 分かりにくかったため、カーソル位置(上半分/下半分)に応じて挿入線(上端/下端)を
+    // 表示する方式に変更。あわせて簡易FLIPアニメーションで並び替え後の移動を分かりやすくする。
     list.querySelectorAll('li[data-uuid]').forEach((li, displayIdx) => {
       li.draggable = true;
       li.addEventListener('dragstart', e => {
         _dragSrcDisplayIdx = displayIdx;
         e.dataTransfer.effectAllowed = 'move';
-        li.style.opacity = '0.5';
+        requestAnimationFrame(() => { li.style.opacity = '0.35'; });
       });
-      li.addEventListener('dragend',  () => { li.style.opacity = ''; });
+      li.addEventListener('dragend', () => {
+        li.style.opacity = '';
+        list.querySelectorAll('li[data-uuid]').forEach(x => { x.style.boxShadow = ''; });
+      });
       li.addEventListener('dragover', e => {
         e.preventDefault();
-        li.style.outline = '2px solid #4caf50';
+        if (_dragSrcDisplayIdx === null || _dragSrcDisplayIdx === displayIdx) return;
+        const rect = li.getBoundingClientRect();
+        const isTop = (e.clientY - rect.top) < rect.height / 2;
+        li.style.boxShadow = isTop
+          ? 'inset 0 3px 0 0 #4caf50'
+          : 'inset 0 -3px 0 0 #4caf50';
       });
-      li.addEventListener('dragleave', () => { li.style.outline = ''; });
+      li.addEventListener('dragleave', () => { li.style.boxShadow = ''; });
       li.addEventListener('drop', e => {
         e.preventDefault();
-        li.style.outline = '';
+        const rect = li.getBoundingClientRect();
+        const isTop = (e.clientY - rect.top) < rect.height / 2;
+        li.style.boxShadow = '';
         if (_dragSrcDisplayIdx === null || _dragSrcDisplayIdx === displayIdx) return;
         pushPmUndo();
         const arr = steps[currentStep];
-        // 表示は反転しているため、実配列インデックスに変換して並べ替える
         const total = arr.length;
+        // 表示は反転しているため、実配列インデックスに変換して並べ替える
         const srcIdx = total - 1 - _dragSrcDisplayIdx;
-        const dstIdx = total - 1 - displayIdx;
+        let dstDisplayIdx = isTop ? displayIdx : displayIdx + 1;
+        if (_dragSrcDisplayIdx < dstDisplayIdx) dstDisplayIdx--; // 取り除いた分の詰めを補正
+        const dstIdx = total - 1 - dstDisplayIdx;
+        _dragSrcDisplayIdx = null;
+        if (srcIdx === dstIdx) return;
         const [item] = arr.splice(srcIdx, 1);
         arr.splice(dstIdx, 0, item);
-        _dragSrcDisplayIdx = null;
         updatePlacedList();
+      });
+    });
+    // v0.0453: 簡易FLIPアニメーション(外部ライブラリなし)。旧位置からの移動量をtransformで
+    // 巻き戻し、次フレームで0に戻すことで滑らかな移動に見せる
+    list.querySelectorAll('li[data-uuid]').forEach(li => {
+      const uuid = li.dataset.uuid;
+      const old = _pmOldListRects.get(uuid);
+      if (!old) return;
+      const now = li.getBoundingClientRect();
+      const dy = old.top - now.top;
+      if (Math.abs(dy) < 1) return;
+      li.style.transition = 'none';
+      li.style.transform = `translateY(${dy}px)`;
+      requestAnimationFrame(() => {
+        li.style.transition = 'transform .18s ease';
+        li.style.transform = '';
       });
     });
 
