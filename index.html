@@ -24,7 +24,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AreCal v0.0452</title>
+<title>AreCal v0.0453</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -76,6 +76,10 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);
 #sh-list li:hover{background:#333;}
 #sh-list li.selected{background:#1a3a5c;border-left-color:#64b5f6;}
 #sh-list li.disabled{opacity:.45;}
+/* v0.0453: ①③ドラッグ&ドロップの視覚フィードバック */
+#sh-list li.dragging{opacity:.35;}
+#sh-list li.drag-over-top{box-shadow:inset 0 3px 0 0 #4caf50;}
+#sh-list li.drag-over-bottom{box-shadow:inset 0 -3px 0 0 #4caf50;}
 .sh-info{line-height:1.4;flex:1;min-width:0;}
 .sh-name{font-weight:600;color:#ccc;}
 .sh-area{color:#90caf9;font-size:.9em;}
@@ -529,12 +533,13 @@ select#sc-select{
     <div id="logo-area">
       <div class="logo-row">
       <img id="logo-helmet" src="data:image/png;base64,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" alt="OSAKI Tech Lab" style="display:block;flex-shrink:0;height:34px;width:auto;border-radius:3px;">
-      <div id="logo-app-ver" class="app-ver" style="flex:1;white-space:nowrap;"><b>AreCal</b> v0.0452</div>
+      <div id="logo-app-ver" class="app-ver" style="flex:1;white-space:nowrap;"><b>AreCal</b> v0.0453</div>
       <img src="https://hits.sh/osaki-kensetsu.github.io/arecal.svg?style=flat-square&color=0088cc&labelColor=1a1a2e" alt="visits" style="height:13px;opacity:.6;" onerror="this.style.display='none'">
       </div><!-- .logo-row -->
     </div>
     <!-- リスト -->
     <div id="list-area">
+      <div style="font-size:.68em;color:#888;margin-bottom:3px;text-align:center;">ドラッグで並べ替え（上：前面 / 下：背面）</div>
       <ul id="sh-list"></ul>
     </div>
     <!-- 合計 -->
@@ -546,7 +551,6 @@ select#sc-select{
         <button id="undo-btn" class="hist-btn" disabled style="flex:1;background:rgba(255,180,0,.12);border-color:#c8960060;color:#c8a000;">↩ 元に戻す</button>
         <button id="redo-btn" class="hist-btn" disabled style="flex:1;background:rgba(100,200,100,.1);border-color:#40804060;color:#70c070;">↪ 取り消す</button>
       </div>
-      <button id="sort-color-btn" class="hist-btn" style="margin-top:4px;background:rgba(180,100,255,.12);border-color:#9060c060;color:#c090ff;">🎨 色別ソート</button>
     </div>
   </div>
 
@@ -889,8 +893,25 @@ select#sc-select{
 
 <script>
 // ================================================================
-//  AreCal v0.0452
+//  AreCal v0.0453
 //  --- 今セッション変更履歴 ---
+//  v0.0453  マスターより新規要望6件のうち、AreCal本体側5件に対応：
+//           ①③左UIの図形リスト(#sh-list)にドラッグ&ドロップでの前面/背面入替を新規実装。
+//           表示順をArecalayの「上：前面/下：背面」と揃うよう反転表示に変更(nth-child位置依存
+//           だったupdColorFilterStyleのDOM参照をdata-idx属性ベースに変更して対応)。ドロップ位置は
+//           カーソルが対象行の上半分/下半分どちらかで判定し、挿入線(緑の内側ボーダー)で明示。
+//           外部ライブラリ(Sortable等)は使わず、旧位置→新位置の差分をtransformで巻き戻してから
+//           0に戻す簡易FLIP方式で移動アニメーションを実現。
+//           ②左UI最下部の「色別ソート」ボタンを削除。
+//           ④部分削除の2個目以降(削除用オブジェクト)の強調色を、以前は「ベース図形の色を薄くした
+//           もの」だったのを紫固定に変更。8色対応後もベース(赤固定)との判別が付くようにした。
+//           ⑤DXF出力：8色対応時に更新されていなかったACIカラーマップを修正(red/lgray/dgray/orangeが
+//           フォールバックで白になっていた)。ドーナツの穴(内側輪郭)も、固定グレー・実線だったのを
+//           オブジェクト自身の色・点線(DASHED、LTYPEをTABLESセクションに追加)に変更。
+//           ⑥PDF出力：図形名が非ASCII(日本語)を含む場合、1文字ずつ'?'に変換していたため
+//           「???」のような文字化け表示になっていた。名前全体を英語の自動生成名(Rect1等)に
+//           まるごとフォールバックする方式に変更。
+//           ※①③のArecalay側(placement_v2.js)は別途対応(ARECALAY_VER側のchangelog参照)。
 //  v0.0452  マスターより新規要望2件：
 //           ①起動画面(免責ダイアログ)用に新規作成した白ロゴを、通常画面左上のロゴ(#logo-helmet、
 //           AreCal/Arecalay使用中ずっと表示されているもの)にも反映。wrogo2.pngのbase64を再利用。
@@ -2017,17 +2038,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Undoボタン
   document.getElementById('undo-btn').addEventListener('click',()=>undo());
   document.getElementById('redo-btn').addEventListener('click',()=>redo());
-  // 9: 色別ソート
-  document.getElementById('sort-color-btn').addEventListener('click',()=>{
-    const order=['blue','green','yellow','gray','purple'];
-    pushUndo();
-    // 2: ソート前に名称を確定（indexが変わっても名前が変わらないよう）
-    shapes.forEach((sh,idx)=>{if(!sh.name)sh.name=getShapeName(sh,idx);});
-    shapes.sort((a,b)=>order.indexOf(a.color||'blue')-order.indexOf(b.color||'blue'));
-    updSidebar();redraw();
-    toast('🎨 色別ソート完了');
-  });
-
   // 回転確認モーダル
   document.getElementById('rot-yes').addEventListener('click',()=>{
     document.getElementById('rot-modal').style.display='none';
@@ -2202,7 +2212,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   let ioMenuOpen=false,ioSubOpen='';
   // Fix1/7: closeIoMenu — ボタンを確実に再有効化
   const _IO_LOCK_BTNS=['rect-btn','poly-btn','sel-union-btn','sub-btn','dist-btn',
-    'survey-btn','undo-btn','redo-btn','sort-color-btn','gray-toggle','clear-btn']; // v0.0348 Fix1 / v0.0442: union-btn→gray-toggle
+    'survey-btn','undo-btn','redo-btn','gray-toggle','clear-btn']; // v0.0348 Fix1 / v0.0442: union-btn→gray-toggle / v0.0453: sort-color-btn削除
   function closeIoMenu(){
     ioMenuOpen=false;ioSubOpen='';
     document.getElementById('io-menu').style.display='none';
@@ -4337,7 +4347,7 @@ function calcUnion(){
 function updColorFilterStyle(){
   shapes.forEach((sh,idx)=>{
     const color=sh.color||'blue';
-    const li=document.querySelector('#sh-list li:nth-child('+(idx+1)+')');
+    const li=document.querySelector('#sh-list li[data-idx="'+idx+'"]');
     if(!li)return;
     const cb=li.querySelector('input[type=checkbox]');
     if(cb){cb.style.accentColor=colorFilter[color]===false?'#888':'';
@@ -4524,10 +4534,11 @@ function drawShape(sh,selected,subBaseHl,subTgtHl,subBaseColor,hoverPulse){
   if(!outer||outer.length<2)return;
   const clr=SHAPE_COLORS[color]||SHAPE_COLORS.blue;
   // v0.0344 Fix2: 選択合成は赤表示
-  // v0.0344 Fix3: 部分削除ターゲットはbase同色（fillは薄め）
-  const baseClr=subBaseColor?SHAPE_COLORS[subBaseColor]||SHAPE_COLORS.blue:SHAPE_COLORS.blue;
-  const fill=selected?'rgba(255,60,60,.25)':subBaseHl?'rgba(255,60,60,.2)':subTgtHl?baseClr.fill.replace(/[\d.]+\)$/,'0.35)'):clr.fill;
-  const stroke=selected?'rgba(255,60,60,.95)':subBaseHl?'rgba(255,60,60,.9)':subTgtHl?baseClr.stroke:clr.stroke;
+  // v0.0453: ④部分削除の2個目以降(削除用オブジェクト)は、以前は「ベース図形の色を薄くしたもの」を
+  // 流用していたため、使える色が4→8色に増えた際にベース側と見分けが付きにくくなっていた。
+  // ベース(1個目)=赤固定はそのまま、2個目以降は紫固定に変更して常に判別できるようにする。
+  const fill=selected?'rgba(255,60,60,.25)':subBaseHl?'rgba(255,60,60,.2)':subTgtHl?'rgba(180,60,255,.3)':clr.fill;
+  const stroke=selected?'rgba(255,60,60,.95)':subBaseHl?'rgba(255,60,60,.9)':subTgtHl?'rgba(180,60,255,.95)':clr.stroke;
   // v0.0339 Fix7: 線幅はzoom非依存(固定px)
   // v0.0434: マスターの要望で少し細く(通常2→1.5px、選択時3→2.5px)
   const lw=(selected||subBaseHl||subTgtHl?2.5:1.5)/zoom; // zoom非依存(固定px)
@@ -4682,8 +4693,14 @@ function drawRectPrev(mx,my){
 // ================================================================
 //  サイドバー更新
 // ================================================================
+// v0.0453: ①③ドラッグで前面/背面を入れ替えるための一時状態
+let _shDragSrcIdx=null;
 function updSidebar(){
   const list=document.getElementById('sh-list');
+  const _oldRects=new Map(); // v0.0453: 簡易FLIPアニメーション用に旧位置を記録
+  list.querySelectorAll('li[data-idx]').forEach(li=>{
+    _oldRects.set(li.dataset.idx,li.getBoundingClientRect());
+  });
   list.innerHTML='';
   // B-19: 0件表示
   if(!shapes.length){
@@ -4691,11 +4708,16 @@ function updSidebar(){
     ni.id='no-items';ni.textContent='No Items';
     list.appendChild(ni);
   }
-  shapes.forEach((sh,idx)=>{
+  // v0.0453: ①表示順を反転(配列の後ろ=画面の前面が、Arecalayの「上：前面/下：背面」と同じ並びで
+  // リストの上に来るようにする)。ドラッグでの入替もこの表示順を基準に行う。
+  const order=[...shapes.keys()].reverse();
+  order.forEach(idx=>{
+    const sh=shapes[idx];
     if(sh.enabled===undefined)sh.enabled=true;
     if(!sh.color)sh.color='blue';
     const col=SHAPE_COLORS[sh.color]||SHAPE_COLORS.blue;
     const li=document.createElement('li');
+    li.dataset.idx=idx;
     // B-16: ハイライト状態
     if(hlSet.has(idx))li.classList.add('highlight');
     // selUnion/sub状態
@@ -4790,8 +4812,64 @@ function updSidebar(){
     db.style.borderRadius='3px';db.style.color='#f88';db.style.cursor='pointer';
     db.addEventListener('click',()=>{pushUndo();shapes.splice(idx,1);hlSet.delete(idx);updSidebar();redraw();});
 
+    // v0.0453: ①③ドラッグ&ドロップで前面/背面を入れ替え。挿入位置は上半分/下半分で
+    // 判定し、境界線(drag-over-top/bottom)で視覚的に示す
+    li.draggable=true;
+    li.addEventListener('dragstart',e=>{
+      _shDragSrcIdx=idx;
+      e.dataTransfer.effectAllowed='move';
+      requestAnimationFrame(()=>li.classList.add('dragging'));
+    });
+    li.addEventListener('dragend',()=>{
+      li.classList.remove('dragging');
+      list.querySelectorAll('li').forEach(x=>x.classList.remove('drag-over-top','drag-over-bottom'));
+    });
+    li.addEventListener('dragover',e=>{
+      e.preventDefault();
+      if(_shDragSrcIdx===null||_shDragSrcIdx===idx)return;
+      const rect=li.getBoundingClientRect();
+      const isTop=(e.clientY-rect.top)<rect.height/2;
+      li.classList.toggle('drag-over-top',isTop);
+      li.classList.toggle('drag-over-bottom',!isTop);
+    });
+    li.addEventListener('dragleave',()=>{
+      li.classList.remove('drag-over-top','drag-over-bottom');
+    });
+    li.addEventListener('drop',e=>{
+      e.preventDefault();
+      const wasTop=li.classList.contains('drag-over-top');
+      li.classList.remove('drag-over-top','drag-over-bottom');
+      if(_shDragSrcIdx===null||_shDragSrcIdx===idx)return;
+      // 表示は反転しているため、「上半分にドロップ＝この図形より前面側に挿入」
+      // 「下半分にドロップ＝この図形より背面側に挿入」の配列添字に変換する
+      let dst=wasTop?idx+1:idx;
+      const src=_shDragSrcIdx;
+      _shDragSrcIdx=null;
+      if(src<dst)dst--; // 取り除いた分の詰めを補正
+      if(src===dst)return;
+      pushUndo();
+      const [item]=shapes.splice(src,1);
+      shapes.splice(dst,0,item);
+      updSidebar();redraw();
+    });
+
     li.appendChild(cb);li.appendChild(clr);li.appendChild(nm);li.appendChild(ar);li.appendChild(db);
     list.appendChild(li);
+  });
+  // v0.0453: 簡易FLIPアニメーション。旧位置から新位置への移動分だけtransformで巻き戻し、
+  // 次フレームでtransformを0に戻すことで滑らかな移動に見せる(外部ライブラリなしで実現)
+  list.querySelectorAll('li[data-idx]').forEach(li=>{
+    const old=_oldRects.get(li.dataset.idx);
+    if(!old)return;
+    const now=li.getBoundingClientRect();
+    const dy=old.top-now.top;
+    if(Math.abs(dy)<1)return;
+    li.style.transition='none';
+    li.style.transform=`translateY(${dy}px)`;
+    requestAnimationFrame(()=>{
+      li.style.transition='transform .18s ease';
+      li.style.transform='';
+    });
   });
   // 合計更新
   calcSum();
@@ -5020,7 +5098,9 @@ function exportDXF(){
 function _doExportDXF(_withLbl){
   const denom=scaleDenom||1; // Fix3: scaleDenom直接使用
   const mpp=(25.4/72)*denom/1000/RS;
-  const aciMap={blue:5,green:3,yellow:2,gray:9,purple:6};
+  // v0.0453: ⑤4色→8色対応の際にaciMapが更新されておらず、red/lgray/dgray/orangeが
+  // フォールバック(ACI 7=白)になっていたバグを修正。8色全てに正式なACI値を割り当てる。
+  const aciMap={blue:5,green:3,yellow:2,purple:6,red:1,lgray:9,dgray:8,orange:30};
   const active=shapes.filter(sh=>sh.enabled!==false);
   let d='';
   const L=(code,val)=>{d+=code+'\r\n'+val+'\r\n';};
@@ -5033,8 +5113,11 @@ function _doExportDXF(_withLbl){
   L(0,'TABLE');L(2,'LAYER');L(70,'1');
   L(0,'LAYER');L(2,'0');L(70,'64');L(62,'7');L(6,'CONTINUOUS');
   L(0,'ENDTAB');
-  L(0,'TABLE');L(2,'LTYPE');L(70,'1');
+  L(0,'TABLE');L(2,'LTYPE');L(70,'2');
   L(0,'LTYPE');L(2,'CONTINUOUS');L(70,'64');L(3,'Solid line');L(72,'65');L(73,'0');L(40,'0.0');
+  // v0.0453: ⑤ドーナツ形状の穴(内側の輪郭)をArecal画面表示と同じ点線で出力するためのLTYPE追加
+  L(0,'LTYPE');L(2,'DASHED');L(70,'64');L(3,'Dashed line');L(72,'65');L(73,'2');
+  L(40,'0.5');L(49,'0.25');L(74,'0');L(49,'-0.25');L(74,'0');
   L(0,'ENDTAB');
   L(0,'ENDSEC');
   // BLOCKS（R12最小構成）
@@ -5043,9 +5126,10 @@ function _doExportDXF(_withLbl){
   // ENTITIES
   L(0,'SECTION');L(2,'ENTITIES');
   // v0.0300: outer + 穴を別エンティティで出力
-  function writePoly(pts,aci){
+  function writePoly(pts,aci,ltype){
+    ltype=ltype||'CONTINUOUS';
     L(0,'POLYLINE');
-    L(8,'0');L(62,aci);L(6,'CONTINUOUS');
+    L(8,'0');L(62,aci);L(6,ltype);
     L(66,'1');L(70,'1');
     L(10,'0.0');L(20,'0.0');L(30,'0.0');
     pts.forEach(p=>{
@@ -5059,8 +5143,10 @@ function _doExportDXF(_withLbl){
   active.forEach(sh=>{
     const aci=aciMap[sh.color||'blue']||7;
     writePoly(getOuter(sh),aci);
-    // 穴は色コード9（灰）で点線表現
-    getHoles(sh).forEach(h=>writePoly(h,9));
+    // v0.0453: ⑤ドーナツの穴(内側の輪郭)は、以前は固定でグレー(ACI9)・実線だったが、
+    // Arecal画面上の表示(オブジェクト自身の色・点線)に合わせて、色=オブジェクト自身のACI・
+    // 線種=DASHEDに変更
+    getHoles(sh).forEach(h=>writePoly(h,aci,'DASHED'));
   });
   if(_withLbl){
     const _al=shapes.filter(sh=>sh.enabled!==false&&colorFilter[sh.color||'blue']!==false);
@@ -5635,9 +5721,11 @@ function _doExportPDF(_pdfWithLbl,mnX,mnY,mxX,mxY){
         doc.rect(14,y,183,6,'F');
         doc.setTextColor(30,30,30);doc.setFontSize(8.5);
         const _sn=(sh.name&&!sh.name.startsWith('！'))?sh.name:getShapeNameEn(sh,idx);
-        // v0.0337 Fix5: jsPDF日本語→?に変換
-        function _toAscii(s){return s.replace(/[^\x20-\x7E]/g,'?');}
-        const nm=_toAscii(_sn)+(sh.selfIntersect?' *SI':'');
+        // v0.0453: ⑥従来は非ASCII文字を1文字ずつ'?'に変換していたため、日本語の名前が
+        // 「???」「????」のような文字化け表示になっていた。名前全体に非ASCII文字が
+        // 含まれる場合は、英語の自動生成名(Rect1等)にまるごとフォールバックする方式に変更。
+        const _hasNonAscii=/[^\x20-\x7E]/.test(_sn);
+        const nm=(_hasNonAscii?getShapeNameEn(sh,idx):_sn)+(sh.selfIntersect?' *SI':'');
         // v0.0337 Fix5: jsPDF文字化け対策 → ASCII文字のみ
         const tp=sh.shapeType==='edit'?
           (sh.editNum?`Edited(${sh.editNum})`:'Edited'):
@@ -5797,7 +5885,7 @@ function _doExportPDF(_pdfWithLbl,mnX,mnY,mxX,mxY){
         status.style.color      = '#2196f3';
         status.textContent      = '📐 面積計算モード';
         if (helmetIcon) helmetIcon.style.color = '#2196f3';
-        if (appVerLbl)  { appVerLbl.style.color = '#2196f3'; appVerLbl.innerHTML = '<b>AreCal</b> v0.0452'; }
+        if (appVerLbl)  { appVerLbl.style.color = '#2196f3'; appVerLbl.innerHTML = '<b>AreCal</b> v0.0453'; }
       }
     }
 
